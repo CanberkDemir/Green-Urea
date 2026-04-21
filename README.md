@@ -1,9 +1,5 @@
 # Script Runner Guide
 
-This README focuses on the scripts and notebooks that a person is likely to run from this workspace. It is not a full code reference; it is a practical guide for getting data, training surrogates, solving the IPPS model, and plotting results.
-
-
-
 Notes:
 
 - The Aspen runners require Aspen Plus on Windows.
