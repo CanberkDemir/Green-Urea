@@ -1,0 +1,10 @@
+unit,x_feature,y_feature,output,slice_type,fixed_inputs,mae,mape,n_leaves,include_all_heat_duties
+ureaF_unit,Fnh3,Fco2,pure_urea_kgph,full_model,"{""K_U"": 19.198621771937624}",0.07554196662468261,1.3687943962403712,64,True
+ureaF_unit,Fnh3,Fco2,product_urea_wtfrac,full_model,"{""K_U"": 19.198621771937624}",0.002257846873139977,2.661440930080642,69,True
+ureaF_unit,Fnh3,Fco2,electric_kwhph,full_model,"{""K_U"": 19.198621771937624}",0.11238874916233627,0.18652793827212144,60,True
+ureaF_unit,Fnh3,K_U,pure_urea_kgph,full_model,"{""Fco2"": 175.0}",0.07554196662468261,1.3687943962403712,64,True
+ureaF_unit,Fnh3,K_U,product_urea_wtfrac,full_model,"{""Fco2"": 175.0}",0.002257846873139977,2.661440930080642,69,True
+ureaF_unit,Fnh3,K_U,electric_kwhph,full_model,"{""Fco2"": 175.0}",0.11238874916233627,0.18652793827212144,60,True
+ureaF_unit,Fco2,K_U,pure_urea_kgph,full_model,"{""Fnh3"": 10.0}",0.07554196662468261,1.3687943962403712,64,True
+ureaF_unit,Fco2,K_U,product_urea_wtfrac,full_model,"{""Fnh3"": 10.0}",0.002257846873139977,2.661440930080642,69,True
+ureaF_unit,Fco2,K_U,electric_kwhph,full_model,"{""Fnh3"": 10.0}",0.11238874916233627,0.18652793827212144,60,True

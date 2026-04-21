@@ -1,0 +1,12 @@
+name,path,lower,upper,active,notes
+Ft,\Data\Streams\NO3-IN\Input\TOTFLOW,8500,9080,1,case-grid driver only; Aspen is written via derived NO3-IN component flows
+NO3In_H2O_Flow,\Data\Streams\NO3-IN\Input\FLOW\MIXED\H2O,,,0,derived automatically from Ft using the archive composition; do not activate
+NO3In_CL_Flow,\Data\Streams\NO3-IN\Input\FLOW\MIXED\CL-,,,0,derived automatically from Ft using the archive composition; do not activate
+NO3In_NA_Flow,\Data\Streams\NO3-IN\Input\FLOW\MIXED\NA+,,,0,derived automatically from Ft using the archive composition; do not activate
+NO3In_NO3_Flow,\Data\Streams\NO3-IN\Input\FLOW\MIXED\NO3-,,,0,derived automatically from Ft using the archive composition; do not activate
+NO3In_SO4_Flow,\Data\Streams\NO3-IN\Input\FLOW\MIXED\SO4--,,,0,derived automatically from Ft using the archive composition; do not activate
+Wno3,\Data\Streams\NO3-IN\Input\FLOW\MIXED\NO3-,0.0925,0.0925,0,legacy row kept inactive; NO3-IN composition is now fixed automatically
+Fh2,\Data\Streams\H2FEED\Input\TOTFLOW\MIXED,5,15,1,writable H2FEED total-flow spec; use this instead of the H2 composition node
+H2Feed_H2_Flow,\Data\Streams\H2FEED\Input\FLOW\MIXED\H2,,,0,legacy inactive row; this pure-H2 composition node stays at 1.0 and should not be used as the flow input
+Kl,\Data\Blocks\B1\Input\LENGTH,10,10,0,fixed at 10 m for surrogate retraining and optimization
+Kd,\Data\Blocks\B1\Input\DIAM,1,1,0,fixed at 1 m diameter for surrogate retraining and optimization

@@ -1,0 +1,5 @@
+python run_ammoniaF_grid.py --generate-only --resolution 5
+python run_ammoniaF_grid.py --resolution 5 --simulation-file "D:\path\to\ammoniaF.bkp"
+
+python run_ureaF_grid.py --generate-only --resolution 5
+python run_ureaF_grid.py --resolution 5 --simulation-file "D:\path\to\ureaF.bkp"

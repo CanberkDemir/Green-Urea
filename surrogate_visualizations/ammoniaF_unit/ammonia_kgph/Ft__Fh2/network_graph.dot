@@ -1,0 +1,51 @@
+digraph ammonia_kgph_network {
+	nodesep=0.28 overlap=false rankdir=LR ranksep=0.7 splines=line
+	subgraph cluster_inputs {
+		color="#cbd5e1" label=Inputs
+		in_0 [label=Ft color="#60a5fa" fillcolor="#dbeafe" shape=box style="rounded,filled"]
+		in_1 [label=Fh2 color="#60a5fa" fillcolor="#dbeafe" shape=box style="rounded,filled"]
+	}
+	subgraph cluster_hidden_1 {
+		color="#d1d5db" label="Hidden 1\nDense(5, ReLU)"
+		h1_0 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+		h1_1 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+		h1_2 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+		h1_3 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+		h1_4 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+	}
+	in_0 -> h1_0 [color="#9ca3af" penwidth=0.35]
+	in_0 -> h1_1 [color="#9ca3af" penwidth=0.35]
+	in_0 -> h1_2 [color="#9ca3af" penwidth=0.35]
+	in_0 -> h1_3 [color="#9ca3af" penwidth=0.35]
+	in_0 -> h1_4 [color="#9ca3af" penwidth=0.35]
+	in_1 -> h1_0 [color="#9ca3af" penwidth=0.35]
+	in_1 -> h1_1 [color="#9ca3af" penwidth=0.35]
+	in_1 -> h1_2 [color="#9ca3af" penwidth=0.35]
+	in_1 -> h1_3 [color="#9ca3af" penwidth=0.35]
+	in_1 -> h1_4 [color="#9ca3af" penwidth=0.35]
+	subgraph cluster_hidden_2 {
+		color="#d1d5db" label="Hidden 2\nDense(3, ReLU)"
+		h2_0 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+		h2_1 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+		h2_2 [label="" color="#f59e0b" fillcolor="#fde68a" height=0.18 shape=circle style=filled width=0.18]
+	}
+	h1_0 -> h2_0 [color="#9ca3af" penwidth=0.35]
+	h1_0 -> h2_1 [color="#9ca3af" penwidth=0.35]
+	h1_0 -> h2_2 [color="#9ca3af" penwidth=0.35]
+	h1_1 -> h2_0 [color="#9ca3af" penwidth=0.35]
+	h1_1 -> h2_1 [color="#9ca3af" penwidth=0.35]
+	h1_1 -> h2_2 [color="#9ca3af" penwidth=0.35]
+	h1_2 -> h2_0 [color="#9ca3af" penwidth=0.35]
+	h1_2 -> h2_1 [color="#9ca3af" penwidth=0.35]
+	h1_2 -> h2_2 [color="#9ca3af" penwidth=0.35]
+	h1_3 -> h2_0 [color="#9ca3af" penwidth=0.35]
+	h1_3 -> h2_1 [color="#9ca3af" penwidth=0.35]
+	h1_3 -> h2_2 [color="#9ca3af" penwidth=0.35]
+	h1_4 -> h2_0 [color="#9ca3af" penwidth=0.35]
+	h1_4 -> h2_1 [color="#9ca3af" penwidth=0.35]
+	h1_4 -> h2_2 [color="#9ca3af" penwidth=0.35]
+	out_0 [label=ammonia_kgph color="#22c55e" fillcolor="#dcfce7" shape=box style="rounded,filled"]
+	h2_0 -> out_0 [color="#9ca3af" penwidth=0.35]
+	h2_1 -> out_0 [color="#9ca3af" penwidth=0.35]
+	h2_2 -> out_0 [color="#9ca3af" penwidth=0.35]
+}

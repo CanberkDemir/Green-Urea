@@ -1,0 +1,14 @@
+name,path,active,notes
+Ft_UREA-OUT,\Data\Streams\DEF-OUT\Output\RES_MASSFLOW,1,Total mass flow rate of DEF-OUT stream
+Wurea,\Data\Streams\DEF-OUT\Output\MASSFRAC\MIXED\UREA,0,computed automatically from the DEF-OUT UREA mass fraction; leave inactive
+QB3,\Data\Blocks\B3\Output\QNET,1,Heater B3 heat duty
+QB6,\Data\Blocks\B6\Output\QNET,1,Heater B6 heat duty
+QB27,\Data\Blocks\B27\Output\QNET,1,Heater B27 heat duty
+QB10_hot,\Data\Blocks\B10\Output\DUTY_HOT,1,HeatX B10 hot-side duty
+QB10_cold,\Data\Blocks\B10\Output\DUTY_CLD,1,HeatX B10 cold-side duty
+QB7_reb,\Data\Blocks\B7\Output\REB_DUTY,1,RadFrac B7 reboiler duty
+QB7_cond,\Data\Blocks\B7\Output\COND_DUTY,1,RadFrac B7 condenser duty
+QB25_reb,\Data\Blocks\B25\Output\REB_DUTY,1,RadFrac B25 reboiler duty; B25 has no condenser in this model
+QB28_reb,\Data\Blocks\B28\Output\REB_DUTY,1,RadFrac B28 reboiler duty
+QB28_cond,\Data\Blocks\B28\Output\COND_DUTY,1,RadFrac B28 condenser duty
+QR01,\Data\Blocks\R01\Output\QCALC,1,RPlug R01 calculated heat duty

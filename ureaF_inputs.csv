@@ -1,0 +1,5 @@
+name,path,lower,upper,active,notes
+Kl,\Data\Blocks\R01\Input\LENGTH,20,20,0,fixed at 20 m for surrogate retraining and optimization
+Kd,\Data\Blocks\R01\Input\DIAM,2.5,2.5,0,fixed at 2.5 m diameter for surrogate retraining and optimization
+Fnh3,\Data\Streams\NH3-IN\Input\TOTFLOW\MIXED,5,12,1,writable NH3-IN total-flow spec; use this instead of the NH3 component-flow node
+Fco2,\Data\Streams\CO2-IN\Input\FLOW\MIXED\CO2,0,50,1,CO2 mass flow

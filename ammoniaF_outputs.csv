@@ -1,0 +1,8 @@
+name,path,active,notes
+Mt,\Data\Streams\S13\Output\RES_MASSFLOW,1, total mass flow
+Wnh3,\Data\Streams\S13\Output\MASSFLOW\MIXED\NH3,0,computed automatically as NH3 mass flow divided by S13 total mass flow; leave inactive
+NH3_out_kgph,\Data\Streams\S13\Output\MASSFLOW\MIXED\NH3,0,computed automatically as the raw Aspen NH3 mass flow at S13; leave inactive
+Qh1,\Data\Blocks\H1\Output\QNET,1, Heater H1 heat duty; Aspen returns cal/sec and run script writes MMkcal/hr
+Qc1,\Data\Blocks\C1\Output\QNET,1, Cooler C1 heat duty; Aspen returns cal/sec and run script writes MMkcal/hr
+Qr1,\Data\Blocks\B1\Output\QCALC,1, Reactor B1 heat duty; Aspen returns cal/sec and run script writes MMkcal/hr
+Qcomp,\Data\Blocks\MCOMPR1\Output\QNET,1, MCOMPR heat duty; Aspen returns cal/sec and run script writes MMkcal/hr

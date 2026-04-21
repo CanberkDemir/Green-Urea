@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surrogate Figure Gallery</title>
+  <style>
+    :root {
+      --bg: #f4efe6;
+      --panel: rgba(255, 252, 247, 0.92);
+      --panel-strong: #fffaf3;
+      --ink: #1b2b34;
+      --muted: #5f6c75;
+      --line: rgba(27, 43, 52, 0.12);
+      --accent: #0f766e;
+      --accent-strong: #115e59;
+      --accent-soft: rgba(15, 118, 110, 0.12);
+      --shadow: 0 18px 40px rgba(36, 55, 66, 0.12);
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 10px;
+      --font-body: "Segoe UI Variable", "Aptos", "Trebuchet MS", sans-serif;
+      --font-mono: "Cascadia Code", "Consolas", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-body);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(217, 119, 6, 0.14), transparent 24%),
+        linear-gradient(180deg, #f8f4ee 0%, #efe7dc 100%);
+    }
+
+    .shell {
+      width: min(1400px, calc(100vw - 28px));
+      margin: 20px auto 36px;
+    }
+
+    .hero,
+    .panel,
+    .gallery-card,
+    .empty-state {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero {
+      border-radius: 28px;
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      border-radius: 999px;
+      padding: 7px 12px;
+      width: fit-content;
+    }
+
+    h1 {
+      margin: 10px 0 10px;
+      font-size: clamp(2rem, 4.6vw, 3.7rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      max-width: 12ch;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 78ch;
+      font-size: 1rem;
+      line-height: 1.55;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .button,
+    .ghost-button,
+    .file-label {
+      appearance: none;
+      border: none;
+      cursor: pointer;
+      font: inherit;
+      border-radius: 999px;
+      padding: 12px 18px;
+      transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .button,
+    .file-label {
+      color: white;
+      background: linear-gradient(135deg, var(--accent) 0%, #155e75 100%);
+      box-shadow: 0 12px 24px rgba(15, 118, 110, 0.18);
+    }
+
+    .ghost-button {
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    .button:hover,
+    .ghost-button:hover,
+    .file-label:hover {
+      transform: translateY(-1px);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+    }
+
+    .panel {
+      border-radius: var(--radius-lg);
+      padding: 18px;
+    }
+
+    .panel h2,
+    .panel h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .panel ul {
+      margin: 10px 0 0;
+      padding-left: 18px;
+    }
+
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.93rem;
+      color: var(--muted);
+    }
+
+    .status-pill {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid var(--line);
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    .toolbar {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--ink);
+      padding: 11px 12px;
+      font: inherit;
+    }
+
+    .gallery {
+      margin-top: 20px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .gallery-card {
+      border-radius: 24px;
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      display: grid;
+      gap: 8px;
+    }
+
+    .card-title h2 {
+      margin: 0;
+      font-size: clamp(1.25rem, 2vw, 1.7rem);
+      line-height: 1.05;
+    }
+
+    .meta-line {
+      color: var(--muted);
+      font-size: 0.95rem;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .figure-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .figure-tile {
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .figure-tile h3 {
+      margin: 0;
+      font-size: 0.96rem;
+    }
+
+    .figure-frame {
+      border-radius: 14px;
+      overflow: hidden;
+      background: #f6f1e8;
+      border: 1px solid rgba(27, 43, 52, 0.08);
+      min-height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .figure-frame.interactive {
+      min-height: 420px;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    }
+
+    .figure-frame img {
+      display: block;
+      width: 100%;
+      height: auto;
+      cursor: zoom-in;
+      background: white;
+    }
+
+    .plotly-host {
+      width: 100%;
+      min-height: 420px;
+    }
+
+    .plotly-note {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .figure-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .figure-actions a {
+      text-decoration: none;
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+
+    .empty-state {
+      border-radius: 24px;
+      padding: 42px 24px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state strong {
+      display: block;
+      color: var(--ink);
+      margin-bottom: 8px;
+      font-size: 1.05rem;
+    }
+
+    .sr-only,
+    #summaryFile {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    dialog {
+      border: none;
+      padding: 0;
+      background: transparent;
+      width: min(96vw, 1300px);
+      max-height: 92vh;
+    }
+
+    dialog::backdrop {
+      background: rgba(17, 24, 39, 0.72);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-shell {
+      background: #0f1720;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+    }
+
+    .modal-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      color: white;
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .modal-bar button {
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .modal-image-wrap {
+      max-height: calc(92vh - 60px);
+      overflow: auto;
+      background: #101826;
+    }
+
+    .modal-image-wrap img {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: white;
+    }
+
+    @media (max-width: 1100px) {
+      .hero-grid,
+      .figure-grid,
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .badge-row {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-header">
+        <div>
+          <div class="eyebrow">Surrogate Figures</div>
+          <h1>Browse every network, surface, and parity figure in one place.</h1>
+          <p>
+            Open this file in your browser, load the plot script's <code>run_summary.json</code>,
+            and the page will build a gallery for every output and every feature-pair combination.
+            It also understands the per-plot <code>summary.json</code> files if you want to inspect a single figure set.
+          </p>
+        </div>
+
+        <div class="hero-actions">
+          <label class="file-label" for="summaryFile">Load Summary JSON</label>
+          <input id="summaryFile" type="file" accept=".json,application/json">
+          <button class="ghost-button" id="clearButton" type="button">Clear</button>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-pill" id="statusText">No summary loaded yet.</div>
+        <div class="status-pill" id="recordCount">0 views</div>
+      </div>
+
+      <div class="hero-grid">
+        <article class="panel">
+          <h2>How To Use</h2>
+          <ul>
+            <li>Run <code>plot_surrogate_graphviz_surface.py</code> so it writes figures and a <code>run_summary.json</code>.</li>
+            <li>Open this HTML file and choose that JSON file with the button above.</li>
+            <li>Filter by unit, output, or feature pair, then click any image to zoom it.</li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <h2>Expected Files</h2>
+          <p>
+            The gallery reads the image paths stored in the summary JSON. Absolute Windows paths are
+            automatically converted into browser-friendly <code>file:///</code> URLs.
+          </p>
+          <p style="margin-top: 10px;">
+            Best match: <code>surrogate_visualizations/&lt;unit&gt;/run_summary.json</code>
+          </p>
+        </article>
+      </div>
+
+      <section class="toolbar panel">
+        <div class="field">
+          <label for="searchBox">Search</label>
+          <input id="searchBox" type="text" placeholder="Search output, unit, pair, path...">
+        </div>
+
+        <div class="field">
+          <label for="unitFilter">Unit</label>
+          <select id="unitFilter">
+            <option value="">All units</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="outputFilter">Output</label>
+          <select id="outputFilter">
+            <option value="">All outputs</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="pairFilter">Feature Pair</label>
+          <select id="pairFilter">
+            <option value="">All pairs</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="sortFilter">Sort</label>
+          <select id="sortFilter">
+            <option value="unit">Unit / output</option>
+            <option value="r2">Best R2 first</option>
+            <option value="mae">Lowest MAE first</option>
+            <option value="rmse">Lowest RMSE first</option>
+          </select>
+        </div>
+      </section>
+    </section>
+
+    <section class="gallery" id="gallery">
+      <article class="empty-state" id="emptyState">
+        <strong>Load a summary file to begin.</strong>
+        The gallery will appear here after you choose a <code>run_summary.json</code> or a single <code>summary.json</code>.
+      </article>
+    </section>
+  </main>
+
+  <dialog id="imageModal">
+    <div class="modal-shell">
+      <div class="modal-bar">
+        <div id="modalTitle">Figure</div>
+        <button id="modalClose" type="button">Close</button>
+      </div>
+      <div class="modal-image-wrap">
+        <img id="modalImage" alt="Expanded figure">
+      </div>
+    </div>
+  </dialog>
+
+  <script src="./plotly.min.js"></script>
+  <script>
+    const state = {
+      records: [],
+      filtered: [],
+      loadedName: "",
+    };
+    const INTERACTIVE_SURFACE_SCATTER_MARKER_SIZE = 2;
+    const INTERACTIVE_SURFACE_EXPORT_SIZE = 1800;
+    const INTERACTIVE_SURFACE_EXPORT_SCALE = 4;
+    const INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE = 20;
+    const INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE = 15;
+    const INTERACTIVE_SURFACE_COLORBAR_TITLE_FONT_SIZE = 18;
+    const INTERACTIVE_SURFACE_COLORBAR_TICK_FONT_SIZE = 14;
+    const INTERACTIVE_SURFACE_DEFAULT_CAMERA = {
+      eye: { x: 1.6, y: -1.7, z: 1.0 },
+      center: { x: 0.0, y: 0.0, z: 0.0 },
+      up: { x: 0.0, y: 0.0, z: 1.0 },
+    };
+    const INTERACTIVE_SURFACE_PURE_UREA_CAMERA = {
+      eye: { x: -1.6, y: -1.6, z: 1.0},
+      center: { x: 0.0, y: 0.0, z: -0.08 },
+      up: { x: 0.0, y: 0.0, z: 1.0 },
+    };
+    const INTERACTIVE_SURFACE_DEFAULT_ASPECTRATIO = { x: 1.0, y: 1.0, z: 0.9 };
+    const INTERACTIVE_SURFACE_PURE_UREA_ASPECTRATIO = { x: 1.0, y: 1.0, z: 0.82 };
+
+    const summaryFileInput = document.getElementById("summaryFile");
+    const clearButton = document.getElementById("clearButton");
+    const statusText = document.getElementById("statusText");
+    const recordCount = document.getElementById("recordCount");
+    const gallery = document.getElementById("gallery");
+    const emptyState = document.getElementById("emptyState");
+    const unitFilter = document.getElementById("unitFilter");
+    const outputFilter = document.getElementById("outputFilter");
+    const pairFilter = document.getElementById("pairFilter");
+    const sortFilter = document.getElementById("sortFilter");
+    const searchBox = document.getElementById("searchBox");
+    const imageModal = document.getElementById("imageModal");
+    const modalImage = document.getElementById("modalImage");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalClose = document.getElementById("modalClose");
+
+    function windowsPathToFileUrl(value) {
+      if (!value) return "";
+      if (value.startsWith("file://")) return value;
+      if (/^[A-Za-z]:[\\/]/.test(value)) {
+        return encodeURI("file:///" + value.replace(/\\/g, "/"));
+      }
+      return value;
+    }
+
+    function formatMetric(value, digits = 4) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return "n/a";
+      }
+      return Number(value).toFixed(digits);
+    }
+
+    function normalizeSummary(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (payload && Array.isArray(payload.runs)) return payload.runs;
+      if (payload && typeof payload === "object") return [payload];
+      return [];
+    }
+
+    function enrichRecord(record, index) {
+      const pair = `${record.x_feature || "?"} vs ${record.y_feature || "?"}`;
+      return {
+        key: `${record.unit || "unit"}__${record.output || "output"}__${pair}__${index}`,
+        unit: record.unit || "unknown_unit",
+        output: record.output || "unknown_output",
+        xFeature: record.x_feature || "?",
+        yFeature: record.y_feature || "?",
+        pair,
+        featureNames: Array.isArray(record.feature_names) ? record.feature_names : [],
+        metrics: record.metrics || {},
+        trainingMetrics: record.training_metrics || {},
+        networkGraph: windowsPathToFileUrl(record.network_graph_png || ""),
+        surfacePlot: windowsPathToFileUrl(record.surface_plot_png || ""),
+        parityPlot: windowsPathToFileUrl(record.parity_plot_png || ""),
+        trainingLoss: windowsPathToFileUrl(record.training_loss_png || ""),
+        surfaceData: record.surface_data || null,
+      };
+    }
+
+    function fillSelect(select, values, placeholder) {
+      const previous = select.value;
+      select.innerHTML = "";
+      const first = document.createElement("option");
+      first.value = "";
+      first.textContent = placeholder;
+      select.appendChild(first);
+      values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+      if ([...select.options].some((option) => option.value === previous)) {
+        select.value = previous;
+      }
+    }
+
+    function updateFilters() {
+      fillSelect(
+        unitFilter,
+        [...new Set(state.records.map((record) => record.unit))].sort(),
+        "All units"
+      );
+      fillSelect(
+        outputFilter,
+        [...new Set(state.records.map((record) => record.output))].sort(),
+        "All outputs"
+      );
+      fillSelect(
+        pairFilter,
+        [...new Set(state.records.map((record) => record.pair))].sort(),
+        "All pairs"
+      );
+    }
+
+    function applyFilters() {
+      const unitValue = unitFilter.value;
+      const outputValue = outputFilter.value;
+      const pairValue = pairFilter.value;
+      const searchValue = searchBox.value.trim().toLowerCase();
+      const sortValue = sortFilter.value;
+
+      let filtered = state.records.filter((record) => {
+        const searchBlob = [
+          record.unit,
+          record.output,
+          record.pair,
+          record.networkGraph,
+          record.surfacePlot,
+          record.parityPlot,
+        ].join(" ").toLowerCase();
+
+        return (!unitValue || record.unit === unitValue)
+          && (!outputValue || record.output === outputValue)
+          && (!pairValue || record.pair === pairValue)
+          && (!searchValue || searchBlob.includes(searchValue));
+      });
+
+      filtered.sort((a, b) => {
+        if (sortValue === "r2") {
+          return (Number(b.metrics.r2) || -Infinity) - (Number(a.metrics.r2) || -Infinity);
+        }
+        if (sortValue === "mae") {
+          return (Number(a.metrics.mae) || Infinity) - (Number(b.metrics.mae) || Infinity);
+        }
+        if (sortValue === "rmse") {
+          return (Number(a.metrics.rmse) || Infinity) - (Number(b.metrics.rmse) || Infinity);
+        }
+        return `${a.unit} ${a.output} ${a.pair}`.localeCompare(`${b.unit} ${b.output} ${b.pair}`);
+      });
+
+      state.filtered = filtered;
+      renderGallery();
+    }
+
+    function openModal(src, title) {
+      modalImage.src = src;
+      modalTitle.textContent = title;
+      if (typeof imageModal.showModal === "function") {
+        imageModal.showModal();
+      }
+    }
+
+    function closeModal() {
+      if (imageModal.open) imageModal.close();
+      modalImage.src = "";
+    }
+
+    function figureTile(label, src, alt) {
+      const tile = document.createElement("article");
+      tile.className = "figure-tile";
+
+      const heading = document.createElement("h3");
+      heading.textContent = label;
+      tile.appendChild(heading);
+
+      const frame = document.createElement("div");
+      frame.className = "figure-frame";
+
+      if (src) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = alt;
+        img.loading = "lazy";
+        img.addEventListener("click", () => openModal(src, alt));
+        frame.appendChild(img);
+      } else {
+        frame.textContent = "Image path missing.";
+      }
+      tile.appendChild(frame);
+
+      const actions = document.createElement("div");
+      actions.className = "figure-actions";
+      if (src) {
+        const link = document.createElement("a");
+        link.href = src;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = "Open image";
+        actions.appendChild(link);
+      }
+      tile.appendChild(actions);
+      return tile;
+    }
+
+    function interactiveSurfaceTile(record) {
+      const tile = document.createElement("article");
+      tile.className = "figure-tile";
+
+      const heading = document.createElement("h3");
+      heading.textContent = "Interactive Surface";
+      tile.appendChild(heading);
+
+      const frame = document.createElement("div");
+      frame.className = "figure-frame interactive";
+
+      const data = record.surfaceData;
+      if (window.Plotly && data && Array.isArray(data.x_grid) && Array.isArray(data.y_grid) && Array.isArray(data.z_grid)) {
+        const host = document.createElement("div");
+        host.className = "plotly-host";
+        frame.appendChild(host);
+        requestAnimationFrame(() => {
+          const isPureUreaSurface = record.unit === "ureaF_unit" && record.output === "pure_urea_kgph";
+          const sceneCamera = isPureUreaSurface
+            ? INTERACTIVE_SURFACE_PURE_UREA_CAMERA
+            : INTERACTIVE_SURFACE_DEFAULT_CAMERA;
+          const sceneAspectRatio = isPureUreaSurface
+            ? INTERACTIVE_SURFACE_PURE_UREA_ASPECTRATIO
+            : INTERACTIVE_SURFACE_DEFAULT_ASPECTRATIO;
+          const traces = [
+            {
+              type: "surface",
+              x: data.x_grid,
+              y: data.y_grid,
+              z: data.z_grid,
+              colorscale: "Viridis",
+              opacity: 0.9,
+              showscale: true,
+              colorbar: {
+                title: {
+                  text: record.output,
+                  side: "right",
+                  font: {
+                    size: INTERACTIVE_SURFACE_COLORBAR_TITLE_FONT_SIZE,
+                  },
+                },
+                tickfont: {
+                  size: INTERACTIVE_SURFACE_COLORBAR_TICK_FONT_SIZE,
+                },
+                thickness: 12,
+              },
+              contours: {
+                z: {
+                  show: false,
+                },
+              },
+            },
+            {
+              type: "scatter3d",
+              mode: "markers",
+              x: data.sampled_points?.x || [],
+              y: data.sampled_points?.y || [],
+              z: data.sampled_points?.z || [],
+              marker: {
+                size: INTERACTIVE_SURFACE_SCATTER_MARKER_SIZE,
+                color: "#111827",
+                opacity: 0.45,
+              },
+              name: "Training datapoints",
+            },
+          ];
+
+          const fixedInputs = Object.entries(data.fixed_inputs || {})
+            .map(([key, value]) => `${key}=${Number(value).toFixed(3)}`)
+            .join(", ");
+
+          const layout = {
+            margin: { l: 0, r: 0, b: 0, t: 56 },
+            paper_bgcolor: "rgba(0,0,0,0)",
+            plot_bgcolor: "rgba(0,0,0,0)",
+            scene: {
+              aspectmode: "manual",
+              aspectratio: sceneAspectRatio,
+              xaxis: {
+                title: {
+                  text: data.x_name || record.xFeature,
+                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE },
+                },
+                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE },
+                backgroundcolor: "#f8fafc",
+              },
+              yaxis: {
+                title: {
+                  text: data.y_name || record.yFeature,
+                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE },
+                },
+                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE },
+                backgroundcolor: "#f8fafc",
+              },
+              zaxis: {
+                title: {
+                  text: data.z_name || record.output,
+                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE },
+                },
+                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE },
+                backgroundcolor: "#f8fafc",
+              },
+              camera: sceneCamera,
+            },
+            title: {
+              text: `${record.output}<br><span style="font-size:12px;color:#64748b">Drag to rotate, scroll to zoom${fixedInputs ? `, fixed: ${fixedInputs}` : ""}</span>`,
+              x: 0.02,
+              xanchor: "left",
+            },
+            legend: {
+              orientation: "h",
+              y: 1.02,
+              x: 0.02,
+            },
+          };
+
+          Plotly.newPlot(host, traces, layout, {
+            responsive: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ["lasso2d", "select2d"],
+            toImageButtonOptions: {
+              format: "png",
+              filename: `${record.unit}-${record.output}-${record.pair}`.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, ""),
+              width: INTERACTIVE_SURFACE_EXPORT_SIZE,
+              height: INTERACTIVE_SURFACE_EXPORT_SIZE,
+              scale: INTERACTIVE_SURFACE_EXPORT_SCALE,
+            },
+          });
+        });
+      } else if (record.surfacePlot) {
+        const img = document.createElement("img");
+        img.src = record.surfacePlot;
+        img.alt = `${record.output} surface plot for ${record.pair}`;
+        img.loading = "lazy";
+        img.addEventListener("click", () => openModal(record.surfacePlot, img.alt));
+        frame.classList.remove("interactive");
+        frame.appendChild(img);
+      } else {
+        const note = document.createElement("div");
+        note.className = "plotly-note";
+        note.textContent = "No surface data was found for this record.";
+        frame.appendChild(note);
+      }
+      tile.appendChild(frame);
+
+      const note = document.createElement("div");
+      note.className = "plotly-note";
+      note.textContent = window.Plotly
+        ? "Drag to rotate, right-drag to pan, and scroll to zoom."
+        : "Plotly was not available, so the static PNG preview is shown instead.";
+      tile.appendChild(note);
+
+      const actions = document.createElement("div");
+      actions.className = "figure-actions";
+      if (record.surfacePlot) {
+        const link = document.createElement("a");
+        link.href = record.surfacePlot;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = "Open PNG";
+        actions.appendChild(link);
+      }
+      tile.appendChild(actions);
+      return tile;
+    }
+
+    function renderGallery() {
+      gallery.innerHTML = "";
+      if (!state.filtered.length) {
+        gallery.appendChild(emptyState);
+        emptyState.hidden = false;
+      } else {
+        emptyState.hidden = true;
+      }
+
+      recordCount.textContent = `${state.filtered.length} view${state.filtered.length === 1 ? "" : "s"}`;
+
+      state.filtered.forEach((record) => {
+        const card = document.createElement("article");
+        card.className = "gallery-card";
+
+        const header = document.createElement("div");
+        header.className = "card-header";
+
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "card-title";
+        titleWrap.innerHTML = `
+          <h2>${record.output}</h2>
+          <div class="meta-line">
+            <span><strong>${record.unit}</strong></span>
+            <span>-</span>
+            <span>${record.pair}</span>
+          </div>
+        `;
+        header.appendChild(titleWrap);
+
+        const badges = document.createElement("div");
+        badges.className = "badge-row";
+        const epochsRan = Number(record.trainingMetrics.epochs_ran);
+        badges.innerHTML = `
+          <div class="badge">R2 ${formatMetric(record.metrics.r2, 4)}</div>
+          <div class="badge">MAE ${formatMetric(record.metrics.mae, 4)}</div>
+          <div class="badge">RMSE ${formatMetric(record.metrics.rmse, 4)}</div>
+          <div class="badge">MAPE ${formatMetric(record.metrics.mape_pct, 2)}%</div>
+          ${Number.isFinite(epochsRan) ? `<div class="badge">Epochs ${Math.round(epochsRan)}</div>` : ""}
+        `;
+        header.appendChild(badges);
+
+        const figures = document.createElement("div");
+        figures.className = "figure-grid";
+        figures.appendChild(interactiveSurfaceTile(record));
+        figures.appendChild(
+          figureTile(
+            "Parity Plot",
+            record.parityPlot,
+            `${record.output} parity plot`
+          )
+        );
+        figures.appendChild(
+          figureTile(
+            "Graphviz Network",
+            record.networkGraph,
+            `${record.output} network graph`
+          )
+        );
+        figures.appendChild(
+          figureTile(
+            "Training Loss",
+            record.trainingLoss,
+            `${record.output} training loss curve`
+          )
+        );
+
+        card.appendChild(header);
+        card.appendChild(figures);
+        gallery.appendChild(card);
+      });
+    }
+
+    function loadSummaryObject(payload, sourceName) {
+      const records = normalizeSummary(payload).map(enrichRecord);
+      state.records = records;
+      state.loadedName = sourceName;
+      updateFilters();
+      statusText.textContent = records.length
+        ? `Loaded ${records.length} record${records.length === 1 ? "" : "s"} from ${sourceName}`
+        : `No records found in ${sourceName}`;
+      applyFilters();
+    }
+
+    function readSelectedFile(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          loadSummaryObject(parsed, file.name);
+        } catch (error) {
+          statusText.textContent = `Could not parse ${file.name}: ${error.message}`;
+          state.records = [];
+          state.filtered = [];
+          renderGallery();
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    summaryFileInput.addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (file) readSelectedFile(file);
+    });
+
+    clearButton.addEventListener("click", () => {
+      summaryFileInput.value = "";
+      state.records = [];
+      state.filtered = [];
+      state.loadedName = "";
+      statusText.textContent = "No summary loaded yet.";
+      updateFilters();
+      renderGallery();
+    });
+
+    [unitFilter, outputFilter, pairFilter, sortFilter].forEach((select) => {
+      select.addEventListener("change", applyFilters);
+    });
+    searchBox.addEventListener("input", applyFilters);
+
+    modalClose.addEventListener("click", closeModal);
+    imageModal.addEventListener("click", (event) => {
+      if (event.target === imageModal) closeModal();
+    });
+
+    updateFilters();
+    renderGallery();
+  </script>
+</body>
+</html>
