@@ -10,6 +10,8 @@ Example:
 For a smaller trial run:
     python optimize_ureaF_electricity_parameters.py --max-runs 12 --epochs 400 1000
 """
+# python optimize_ureaF_electricity_parameters.py --max-runs 12 --epochs 400 1000
+
 
 from __future__ import annotations
 
@@ -41,7 +43,6 @@ DEFAULT_LEARNING_RATES = (1e-3, 2e-3, 5e-3)
 DEFAULT_BATCH_SIZES = (128, 256)
 DEFAULT_PATIENCES = (10, 25)
 DEFAULT_L2_REGS = (0.0, 1e-6)
-DEFAULT_SEARCH_ORDER = "round-robin-layers"
 
 LOWER_IS_BETTER = {
     "val_mae",
@@ -212,27 +213,6 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="Optional cap on the number of configurations to run from the grid.",
-    )
-    parser.add_argument(
-        "--search-order",
-        choices=("round-robin-layers", "grid", "random"),
-        default=DEFAULT_SEARCH_ORDER,
-        help=(
-            "Order to use before applying --max-runs. round-robin-layers spreads "
-            "short capped searches across architectures; grid preserves the raw "
-            "Cartesian product order; random shuffles the full grid first."
-        ),
-    )
-    parser.add_argument(
-        "--search-seed",
-        type=int,
-        default=15,
-        help="Random seed used when --search-order random is selected.",
-    )
-    parser.add_argument(
-        "--preview-grid",
-        action="store_true",
-        help="Print the planned configurations and exit without training.",
     )
     parser.add_argument(
         "--no-save-best-model",
@@ -451,30 +431,6 @@ def train_and_score(
 
 def build_search_grid(args: argparse.Namespace) -> list[SearchConfig]:
     layer_options = [parse_layer_spec(value) for value in args.layer_options]
-    non_layer_options = list(
-        itertools.product(
-            args.epochs,
-            args.learning_rates,
-            args.batch_sizes,
-            args.patiences,
-            args.l2_regs,
-            args.seeds,
-        )
-    )
-
-    if args.search_order == "round-robin-layers":
-        raw_configs = (
-            (layers, max_epochs, learning_rate, batch_size, patience, l2_reg, seed)
-            for max_epochs, learning_rate, batch_size, patience, l2_reg, seed in non_layer_options
-            for layers in layer_options
-        )
-    else:
-        raw_configs = (
-            (layers, max_epochs, learning_rate, batch_size, patience, l2_reg, seed)
-            for layers in layer_options
-            for max_epochs, learning_rate, batch_size, patience, l2_reg, seed in non_layer_options
-        )
-
     configs = [
         SearchConfig(
             hidden_layer_sizes=layers,
@@ -486,12 +442,16 @@ def build_search_grid(args: argparse.Namespace) -> list[SearchConfig]:
             l2_reg=float(l2_reg),
             seed=int(seed),
         )
-        for layers, max_epochs, learning_rate, batch_size, patience, l2_reg, seed in raw_configs
+        for layers, max_epochs, learning_rate, batch_size, patience, l2_reg, seed in itertools.product(
+            layer_options,
+            args.epochs,
+            args.learning_rates,
+            args.batch_sizes,
+            args.patiences,
+            args.l2_regs,
+            args.seeds,
+        )
     ]
-    if args.search_order == "random":
-        rng = np.random.default_rng(args.search_seed)
-        configs = [configs[idx] for idx in rng.permutation(len(configs))]
-
     if args.max_runs is not None:
         if args.max_runs <= 0:
             raise ValueError("--max-runs must be positive when provided.")
@@ -499,12 +459,6 @@ def build_search_grid(args: argparse.Namespace) -> list[SearchConfig]:
     if not configs:
         raise ValueError("The search grid is empty.")
     return configs
-
-
-def print_grid_preview(configs: list[SearchConfig]) -> None:
-    print(f"Planned configurations: {len(configs)}")
-    for run_index, config in enumerate(configs, start=1):
-        print(f"[{run_index}/{len(configs)}] {config_id(config)}")
 
 
 def base_result_row(
@@ -586,8 +540,6 @@ def write_metadata(
         "target_max": float(y.max()),
         "target_mean": float(y.mean()),
         "split_seed": args.split_seed,
-        "search_order": args.search_order,
-        "search_seed": args.search_seed,
         "test_fraction": args.test_fraction,
         "validation_fraction": args.validation_fraction,
         "train_rows": int(len(splits.X_train)),
@@ -626,12 +578,6 @@ def write_best_summary(
                     "mode": "retrain",
                     "layers": layers,
                     "epochs": int(best_row["max_epochs"]),
-                    "learning_rate": float(best_row["learning_rate"]),
-                    "batch_size": int(best_row["batch_size"]),
-                    "patience": int(best_row["patience"]),
-                    "min_delta": float(best_row["min_delta"]),
-                    "l2_reg": float(best_row["l2_reg"]),
-                    "seed": int(best_row["seed"]),
                 }
             }
         },
@@ -655,11 +601,6 @@ def write_best_summary(
 
 def main() -> None:
     args = build_parser().parse_args()
-    configs = build_search_grid(args)
-    if args.preview_grid:
-        print_grid_preview(configs)
-        return
-
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     X, Y, _ = sf.load_ureaF_training_data(
@@ -677,6 +618,7 @@ def main() -> None:
         validation_fraction=args.validation_fraction,
         split_seed=args.split_seed,
     )
+    configs = build_search_grid(args)
     write_metadata(args.output_dir, args, configs, X, y, splits)
 
     results_csv = args.output_dir / "ureaF_electricity_parameter_search.csv"
