@@ -30,6 +30,18 @@ import surrogate_functions as sf
 
 THIS_DIR = Path(__file__).resolve().parent
 DEFAULT_OUT_ROOT = THIS_DIR / "surrogate_visualizations"
+ISOMETRIC_ELEVATION_DEG = 20.264389682754654
+ISOMETRIC_AZIMUTH_DEG = -45
+SURFACE_CAMERA_ELEVATION_DEG = ISOMETRIC_ELEVATION_DEG
+SURFACE_CAMERA_AZIMUTH_DEG = ISOMETRIC_AZIMUTH_DEG
+SURFACE_CAMERA_ROLL_DEG = 0
+SURFACE_AXIS_LABEL_FONTSIZE = 18
+SURFACE_TICK_LABEL_FONTSIZE = 12
+SURFACE_Z_LABELPAD = 28
+SURFACE_EXTERNAL_Z_LABEL_X = 0.90
+SURFACE_EXTERNAL_Z_LABEL_Y = 0.52
+SURFACE_POINT_SIZE = 2.0
+SURFACE_POINT_ALPHA = 0.28
 DEFAULT_VIEW = {
     "ammoniaF_unit": {
         "output": "ammonia_kgph",
@@ -472,16 +484,24 @@ def render_surface_plot(
     }
 
     fig = plt.figure(figsize=(9.5, 7.0))
+    fig.patch.set_facecolor("white")
     ax = fig.add_subplot(111, projection="3d")
+    ax.set_facecolor("white")
+    for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+        axis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+        axis.pane.set_edgecolor("#d1d5db")
+        axis._axinfo["grid"]["color"] = (0.82, 0.86, 0.91, 0.55)
+        axis._axinfo["grid"]["linewidth"] = 0.6
+        axis.set_tick_params(labelsize=SURFACE_TICK_LABEL_FONTSIZE)
     ax.plot_surface(xx, yy, zz, cmap="viridis", linewidth=0, antialiased=True, alpha=0.82)
     if len(other_points) > 0:
         ax.scatter(
             other_points[x_name].to_numpy(dtype=float),
             other_points[y_name].to_numpy(dtype=float),
             other_y,
-            c="black",
-            s=0.1,
-            alpha=0.35,
+            c="#64748b",
+            s=SURFACE_POINT_SIZE,
+            alpha=SURFACE_POINT_ALPHA,
             depthshade=False,
             label="Other training datapoints",
         )
@@ -490,25 +510,38 @@ def render_surface_plot(
             slice_points[x_name].to_numpy(dtype=float),
             slice_points[y_name].to_numpy(dtype=float),
             slice_y,
-            c="#7e22ce",
-            s=0.1,
-            alpha=0.9,
+            c="#475569",
+            s=SURFACE_POINT_SIZE,
+            alpha=0.38,
             depthshade=False,
             label="Points on fixed slice",
         )
-    ax.set_xlabel(x_name)
-    ax.set_ylabel(y_name)
-    ax.set_zlabel(output_name)
-    ax.set_title(
-        f"{output_name}: training datapoints vs ReLU piecewise-linear surface\n"
-        f"Fixed inputs: {fixed_inputs}"
+    ax.set_xlabel(x_name, fontsize=SURFACE_AXIS_LABEL_FONTSIZE, fontweight="bold", labelpad=18)
+    ax.set_ylabel(y_name, fontsize=SURFACE_AXIS_LABEL_FONTSIZE, fontweight="bold", labelpad=18)
+    ax.set_zlabel("")
+    fig.text(
+        SURFACE_EXTERNAL_Z_LABEL_X,
+        SURFACE_EXTERNAL_Z_LABEL_Y,
+        output_name,
+        rotation=90,
+        va="center",
+        ha="center",
+        fontsize=SURFACE_AXIS_LABEL_FONTSIZE,
+        fontweight="bold",
+        color="#0f172a",
     )
-    ax.view_init(elev=24, azim=-135)
-    if len(slice_points) > 0 or len(other_points) > 0:
-        ax.legend(loc="upper left", fontsize=8)
+    ax.tick_params(axis="both", which="major", labelsize=SURFACE_TICK_LABEL_FONTSIZE, pad=4)
+    try:
+        ax.view_init(
+            elev=SURFACE_CAMERA_ELEVATION_DEG,
+            azim=SURFACE_CAMERA_AZIMUTH_DEG,
+            roll=SURFACE_CAMERA_ROLL_DEG,
+        )
+    except TypeError:
+        ax.view_init(elev=SURFACE_CAMERA_ELEVATION_DEG, azim=SURFACE_CAMERA_AZIMUTH_DEG)
     fig.tight_layout()
     out_path = out_dir / "surface_vs_datapoints.png"
-    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
     if interactive:
         plt.show(block=True)
     plt.close(fig)
@@ -526,11 +559,15 @@ def render_parity_plot(
     hi = float(max(np.max(y_true), np.max(y_pred)))
 
     fig, ax = plt.subplots(figsize=(6.2, 6.0))
-    ax.scatter(y_true, y_pred, s=12, alpha=0.45, color="#2563eb", edgecolors="none")
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    ax.scatter(y_true, y_pred, s=8, alpha=0.28, color="#64748b", edgecolors="none")
     ax.plot([lo, hi], [lo, hi], linestyle="--", color="black", linewidth=1.0)
-    ax.set_xlabel("Actual")
-    ax.set_ylabel("Predicted")
-    ax.set_title(f"{output_name}: parity plot")
+    ax.set_xlabel("Actual", fontsize=16, fontweight="bold")
+    ax.set_ylabel("Predicted", fontsize=16, fontweight="bold")
+    ax.tick_params(axis="both", which="major", labelsize=11)
+    ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.35)
+    ax.set_title(f"{output_name}: parity plot", fontsize=13, pad=12)
     ax.text(
         0.03,
         0.97,
@@ -543,7 +580,7 @@ def render_parity_plot(
     )
     fig.tight_layout()
     out_path = out_dir / "parity_plot.png"
-    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return out_path
 
@@ -561,6 +598,8 @@ def render_training_loss_plot(
         return None
 
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
 
     if train_loss.size > 0:
         ax.plot(
@@ -585,16 +624,17 @@ def render_training_loss_plot(
     if positive_values.size > 0:
         ax.set_yscale("log")
 
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Loss")
-    ax.set_title(f"{output_name}: training loss curve")
+    ax.set_xlabel("Epoch", fontsize=15, fontweight="bold")
+    ax.set_ylabel("Loss", fontsize=15, fontweight="bold")
+    ax.tick_params(axis="both", which="major", labelsize=11)
+    ax.set_title(f"{output_name}: training loss curve", fontsize=13, pad=12)
     ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.45)
     if train_loss.size > 0 or val_loss.size > 0:
         ax.legend()
     fig.tight_layout()
 
     out_path = out_dir / "training_loss_curve.png"
-    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close(fig)
     return out_path
 
@@ -671,6 +711,7 @@ def run_visualizations(
                 "feature_names": list(bundle.feature_names),
                 "metrics": metrics,
                 "training_metrics": (bundle.model_metrics or {}).get(output_name, {}),
+                "training_config": sf._bundle_output_training_config(bundle, output_name),
                 "network_graph_png": str(network_png),
                 "surface_plot_png": str(surface_png),
                 "parity_plot_png": str(parity_png),

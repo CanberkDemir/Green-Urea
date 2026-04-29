@@ -53,6 +53,8 @@ UREAF_INPUTS_CSV = THIS_DIR / "ureaF_inputs.csv"
 UREAF_TRAIN_ALL_HEAT_DUTIES = True
 
 SHOW_INTERACTIVE_3D_PLOTS = False
+ISOMETRIC_ELEVATION_DEG = 35.264389682754654
+ISOMETRIC_AZIMUTH_DEG = -135
 
 AMMONIAF_RESULT_META_COLUMNS = {
     "case_id",
@@ -94,7 +96,7 @@ AMMONIAF_OPERATING_INPUT_BOUNDS = {
 }
 UREAF_OPERATING_INPUT_BOUNDS = {
     "Fnh3": (5.0, 12.0),
-    "Fco2": (0.0, 50.0),
+    "Fco2": (3.0, 50.0),
 }
 UNIT_INPUT_BOUND_OVERRIDES = {
     "ammoniaF_unit": AMMONIAF_OPERATING_INPUT_BOUNDS,
@@ -335,6 +337,7 @@ def _normalize_hidden_layer_sizes(hidden_layer_sizes: Any) -> Tuple[int, ...]:
 
 def _normalize_output_training_config(config: Dict[str, Any] | None = None) -> Dict[str, Any]:
     config = dict(config or {})
+    config.pop("mode", None)
     hidden_layer_sizes = config.pop(
         "hidden_layer_sizes",
         config.pop("layers", ANN_HIDDEN_LAYER_SIZES),
@@ -343,12 +346,39 @@ def _normalize_output_training_config(config: Dict[str, Any] | None = None) -> D
         "max_epochs",
         config.pop("epochs", ANN_MAX_EPOCHS),
     )
+    learning_rate = config.pop("learning_rate", ANN_LEARNING_RATE)
+    batch_size = config.pop("batch_size", ANN_BATCH_SIZE)
+    patience = config.pop("patience", ANN_PATIENCE)
+    min_delta = config.pop("min_delta", ANN_MIN_DELTA)
+    validation_split = config.pop("validation_split", ANN_VALIDATION_SPLIT)
+    l2_reg = config.pop("l2_reg", ANN_L2_REG)
+    seed = config.pop("seed", None)
 
     normalized = dict(config)
     normalized["hidden_layer_sizes"] = _normalize_hidden_layer_sizes(hidden_layer_sizes)
     normalized["max_epochs"] = int(max_epochs)
     if normalized["max_epochs"] <= 0:
         raise ValueError("`max_epochs` must be a positive integer.")
+    normalized["learning_rate"] = float(learning_rate)
+    if normalized["learning_rate"] <= 0.0:
+        raise ValueError("`learning_rate` must be positive.")
+    normalized["batch_size"] = int(batch_size)
+    if normalized["batch_size"] <= 0:
+        raise ValueError("`batch_size` must be a positive integer.")
+    normalized["patience"] = int(patience)
+    if normalized["patience"] < 0:
+        raise ValueError("`patience` must be non-negative.")
+    normalized["min_delta"] = float(min_delta)
+    if normalized["min_delta"] < 0.0:
+        raise ValueError("`min_delta` must be non-negative.")
+    normalized["validation_split"] = float(validation_split)
+    if not 0.0 <= normalized["validation_split"] < 1.0:
+        raise ValueError("`validation_split` must be in [0, 1).")
+    normalized["l2_reg"] = float(l2_reg)
+    if normalized["l2_reg"] < 0.0:
+        raise ValueError("`l2_reg` must be non-negative.")
+    if seed is not None:
+        normalized["seed"] = int(seed)
     return normalized
 
 
@@ -418,6 +448,14 @@ def _serialize_output_training_config(config: Dict[str, Any]) -> Dict[str, Any]:
     serialized = dict(config)
     serialized["hidden_layer_sizes"] = list(config["hidden_layer_sizes"])
     serialized["max_epochs"] = int(config["max_epochs"])
+    serialized["learning_rate"] = float(config["learning_rate"])
+    serialized["batch_size"] = int(config["batch_size"])
+    serialized["patience"] = int(config["patience"])
+    serialized["min_delta"] = float(config["min_delta"])
+    serialized["validation_split"] = float(config["validation_split"])
+    serialized["l2_reg"] = float(config["l2_reg"])
+    if "seed" in config:
+        serialized["seed"] = int(config["seed"])
     return serialized
 
 
@@ -435,8 +473,10 @@ def _bundle_output_training_config(
 def _build_relu_network(
     input_dim: int,
     hidden_layer_sizes: Tuple[int, ...] = ANN_HIDDEN_LAYER_SIZES,
+    learning_rate: float = ANN_LEARNING_RATE,
+    l2_reg: float = ANN_L2_REG,
 ) -> tf.keras.Sequential:
-    regularizer = tf.keras.regularizers.l2(ANN_L2_REG) if ANN_L2_REG > 0 else None
+    regularizer = tf.keras.regularizers.l2(l2_reg) if l2_reg > 0 else None
     layers: List[tf.keras.layers.Layer] = [
         tf.keras.layers.Input(shape=(input_dim,), dtype=tf.float32, name="input"),
     ]
@@ -454,7 +494,7 @@ def _build_relu_network(
     layers.append(tf.keras.layers.Dense(1, activation="linear", name="output"))
     model = tf.keras.Sequential(layers, name="relu_surrogate")
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=ANN_LEARNING_RATE),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
         loss="mse",
     )
     return model
@@ -505,19 +545,22 @@ def _train_single_output_model(
     x_scaled, x_mean, x_std = _standardize_matrix(x_values)
     y_scaled, y_mean, y_std = _standardize_matrix(y_values)
     resolved_training_config = _normalize_output_training_config(training_config)
+    model_seed = int(resolved_training_config.get("seed", seed))
 
     tf.keras.backend.clear_session()
-    tf.keras.utils.set_random_seed(seed)
+    tf.keras.utils.set_random_seed(model_seed)
 
     model = _build_relu_network(
         input_dim=x_values.shape[1],
         hidden_layer_sizes=resolved_training_config["hidden_layer_sizes"],
+        learning_rate=resolved_training_config["learning_rate"],
+        l2_reg=resolved_training_config["l2_reg"],
     )
     callbacks = [
         tf.keras.callbacks.EarlyStopping(
             monitor="val_loss",
-            patience=ANN_PATIENCE,
-            min_delta=ANN_MIN_DELTA,
+            patience=resolved_training_config["patience"],
+            min_delta=resolved_training_config["min_delta"],
             restore_best_weights=True,
         )
     ]
@@ -526,13 +569,13 @@ def _train_single_output_model(
         "x": x_scaled,
         "y": y_scaled,
         "epochs": resolved_training_config["max_epochs"],
-        "batch_size": int(max(16, min(ANN_BATCH_SIZE, len(x_scaled)))),
+        "batch_size": int(max(1, min(resolved_training_config["batch_size"], len(x_scaled)))),
         "shuffle": True,
         "verbose": 2,
         "callbacks": callbacks,
     }
-    if len(x_scaled) >= 32 and ANN_VALIDATION_SPLIT > 0:
-        fit_kwargs["validation_split"] = ANN_VALIDATION_SPLIT
+    if len(x_scaled) >= 32 and resolved_training_config["validation_split"] > 0:
+        fit_kwargs["validation_split"] = resolved_training_config["validation_split"]
 
     history = model.fit(**fit_kwargs)
     folded_model = _fold_standardization_into_model(model, x_mean, x_std, y_mean, y_std)
@@ -554,6 +597,13 @@ def _train_single_output_model(
         ],
         "configured_max_epochs": float(resolved_training_config["max_epochs"]),
         "hidden_layer_sizes": list(resolved_training_config["hidden_layer_sizes"]),
+        "learning_rate": float(resolved_training_config["learning_rate"]),
+        "batch_size": float(resolved_training_config["batch_size"]),
+        "patience": float(resolved_training_config["patience"]),
+        "min_delta": float(resolved_training_config["min_delta"]),
+        "validation_split": float(resolved_training_config["validation_split"]),
+        "l2_reg": float(resolved_training_config["l2_reg"]),
+        "seed": float(model_seed),
     }
     if "val_loss" in history.history and history.history["val_loss"]:
         metrics["best_val_loss"] = float(np.min(history.history["val_loss"]))
@@ -606,16 +656,20 @@ def _fit_bundle(
             "learning_rate": ANN_LEARNING_RATE,
             "max_epochs": ANN_MAX_EPOCHS,
             "patience": ANN_PATIENCE,
+            "min_delta": ANN_MIN_DELTA,
             "validation_split": ANN_VALIDATION_SPLIT,
             "batch_size": ANN_BATCH_SIZE,
+            "l2_reg": ANN_L2_REG,
             "seed": seed,
             "defaults": {
                 "hidden_layer_sizes": list(ANN_HIDDEN_LAYER_SIZES),
                 "learning_rate": ANN_LEARNING_RATE,
                 "max_epochs": ANN_MAX_EPOCHS,
                 "patience": ANN_PATIENCE,
+                "min_delta": ANN_MIN_DELTA,
                 "validation_split": ANN_VALIDATION_SPLIT,
                 "batch_size": ANN_BATCH_SIZE,
+                "l2_reg": ANN_L2_REG,
             },
             "per_output": {
                 output_name: _serialize_output_training_config(config)
@@ -1490,7 +1544,7 @@ def _make_labeled_surrogate_plots(
     ax2.set_ylabel(y_name)
     ax2.set_zlabel(z_name)
     ax2.set_title(f"{unit_name}: {z_name} (ReLU ANN)")
-    ax2.view_init(elev=24, azim=-135)
+    ax2.view_init(elev=ISOMETRIC_ELEVATION_DEG, azim=ISOMETRIC_AZIMUTH_DEG)
     ax2.legend(loc="upper left", fontsize=8)
     fig2.tight_layout()
     if save and out_prefix is not None:

@@ -305,11 +305,31 @@
     }
 
     .figure-frame.interactive {
+      position: relative;
       min-height: 420px;
       padding: 0;
       align-items: stretch;
       justify-content: stretch;
-      background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+      background: white;
+    }
+
+    :root {
+      --plotly-z-label-right: 46px;
+    }
+
+    .plotly-z-label {
+      position: absolute;
+      right: var(--plotly-z-label-right);
+      top: 50%;
+      transform: translateY(-50%) rotate(90deg);
+      transform-origin: center;
+      z-index: 2;
+      pointer-events: none;
+      color: #0f172a;
+      font-size: 1.35rem;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
     }
 
     .figure-frame img {
@@ -553,22 +573,64 @@
       filtered: [],
       loadedName: "",
     };
-    const INTERACTIVE_SURFACE_SCATTER_MARKER_SIZE = 2;
+    const INTERACTIVE_SURFACE_SCATTER_MARKER_SIZE = 1.35;
     const INTERACTIVE_SURFACE_EXPORT_SIZE = 1800;
     const INTERACTIVE_SURFACE_EXPORT_SCALE = 4;
-    const INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE = 20;
-    const INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE = 15;
-    const INTERACTIVE_SURFACE_COLORBAR_TITLE_FONT_SIZE = 18;
-    const INTERACTIVE_SURFACE_COLORBAR_TICK_FONT_SIZE = 14;
-    const INTERACTIVE_SURFACE_DEFAULT_CAMERA = {
-      eye: { x: 1.6, y: -1.7, z: 1.0 },
-      center: { x: 0.0, y: 0.0, z: 0.0 },
-      up: { x: 0.0, y: 0.0, z: 1.0 },
+    const INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE = 30;
+    const INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE = 18;
+    const INTERACTIVE_SURFACE_COLORBAR_TITLE_FONT_SIZE = 24;
+    const INTERACTIVE_SURFACE_COLORBAR_TICK_FONT_SIZE = 16;
+    // Adjust these values to reposition the default interactive 3D camera.
+    const INTERACTIVE_SURFACE_CAMERA_EYE_X = 1.35;
+    const INTERACTIVE_SURFACE_CAMERA_EYE_Y = -1.35;
+    const INTERACTIVE_SURFACE_CAMERA_EYE_Z = 1.35;
+    const INTERACTIVE_SURFACE_CAMERA_CENTER_X = 0.0;
+    const INTERACTIVE_SURFACE_CAMERA_CENTER_Y = 0.0;
+    const INTERACTIVE_SURFACE_CAMERA_CENTER_Z = 0.0;
+    const INTERACTIVE_SURFACE_CAMERA_UP_X = 0.0;
+    const INTERACTIVE_SURFACE_CAMERA_UP_Y = 0.0;
+    const INTERACTIVE_SURFACE_CAMERA_UP_Z = 1.0;
+    const INTERACTIVE_SURFACE_PURE_UREA_CAMERA_EYE_X = -1.35;
+    const INTERACTIVE_SURFACE_PURE_UREA_CAMERA_EYE_Y = -1.35;
+    const INTERACTIVE_SURFACE_PURE_UREA_CAMERA_EYE_Z = 1.35;
+    const INTERACTIVE_SURFACE_PURE_UREA_CAMERA_CENTER_X = 0.0;
+    const INTERACTIVE_SURFACE_PURE_UREA_CAMERA_CENTER_Y = 0.0;
+    const INTERACTIVE_SURFACE_PURE_UREA_CAMERA_CENTER_Z = -0.08;
+    const INTERACTIVE_SURFACE_ISOMETRIC_CAMERA = {
+      eye: {
+        x: INTERACTIVE_SURFACE_CAMERA_EYE_X,
+        y: INTERACTIVE_SURFACE_CAMERA_EYE_Y,
+        z: INTERACTIVE_SURFACE_CAMERA_EYE_Z,
+      },
+      center: {
+        x: INTERACTIVE_SURFACE_CAMERA_CENTER_X,
+        y: INTERACTIVE_SURFACE_CAMERA_CENTER_Y,
+        z: INTERACTIVE_SURFACE_CAMERA_CENTER_Z,
+      },
+      up: {
+        x: INTERACTIVE_SURFACE_CAMERA_UP_X,
+        y: INTERACTIVE_SURFACE_CAMERA_UP_Y,
+        z: INTERACTIVE_SURFACE_CAMERA_UP_Z,
+      },
+      projection: { type: "orthographic" },
     };
     const INTERACTIVE_SURFACE_PURE_UREA_CAMERA = {
-      eye: { x: -1.6, y: -1.6, z: 1.0},
-      center: { x: 0.0, y: 0.0, z: -0.08 },
-      up: { x: 0.0, y: 0.0, z: 1.0 },
+      eye: {
+        x: INTERACTIVE_SURFACE_PURE_UREA_CAMERA_EYE_X,
+        y: INTERACTIVE_SURFACE_PURE_UREA_CAMERA_EYE_Y,
+        z: INTERACTIVE_SURFACE_PURE_UREA_CAMERA_EYE_Z,
+      },
+      center: {
+        x: INTERACTIVE_SURFACE_PURE_UREA_CAMERA_CENTER_X,
+        y: INTERACTIVE_SURFACE_PURE_UREA_CAMERA_CENTER_Y,
+        z: INTERACTIVE_SURFACE_PURE_UREA_CAMERA_CENTER_Z,
+      },
+      up: {
+        x: INTERACTIVE_SURFACE_CAMERA_UP_X,
+        y: INTERACTIVE_SURFACE_CAMERA_UP_Y,
+        z: INTERACTIVE_SURFACE_CAMERA_UP_Z,
+      },
+      projection: { type: "orthographic" },
     };
     const INTERACTIVE_SURFACE_DEFAULT_ASPECTRATIO = { x: 1.0, y: 1.0, z: 0.9 };
     const INTERACTIVE_SURFACE_PURE_UREA_ASPECTRATIO = { x: 1.0, y: 1.0, z: 0.82 };
@@ -624,6 +686,7 @@
         featureNames: Array.isArray(record.feature_names) ? record.feature_names : [],
         metrics: record.metrics || {},
         trainingMetrics: record.training_metrics || {},
+        trainingConfig: record.training_config || {},
         networkGraph: windowsPathToFileUrl(record.network_graph_png || ""),
         surfacePlot: windowsPathToFileUrl(record.surface_plot_png || ""),
         parityPlot: windowsPathToFileUrl(record.parity_plot_png || ""),
@@ -774,11 +837,15 @@
         const host = document.createElement("div");
         host.className = "plotly-host";
         frame.appendChild(host);
+        const zLabel = document.createElement("div");
+        zLabel.className = "plotly-z-label";
+        zLabel.textContent = data.z_name || record.output;
+        frame.appendChild(zLabel);
         requestAnimationFrame(() => {
           const isPureUreaSurface = record.unit === "ureaF_unit" && record.output === "pure_urea_kgph";
           const sceneCamera = isPureUreaSurface
             ? INTERACTIVE_SURFACE_PURE_UREA_CAMERA
-            : INTERACTIVE_SURFACE_DEFAULT_CAMERA;
+            : INTERACTIVE_SURFACE_ISOMETRIC_CAMERA;
           const sceneAspectRatio = isPureUreaSurface
             ? INTERACTIVE_SURFACE_PURE_UREA_ASPECTRATIO
             : INTERACTIVE_SURFACE_DEFAULT_ASPECTRATIO;
@@ -818,60 +885,54 @@
               z: data.sampled_points?.z || [],
               marker: {
                 size: INTERACTIVE_SURFACE_SCATTER_MARKER_SIZE,
-                color: "#111827",
-                opacity: 0.45,
+                color: "#64748b",
+                opacity: 0.24,
               },
               name: "Training datapoints",
+              showlegend: false,
             },
           ];
 
-          const fixedInputs = Object.entries(data.fixed_inputs || {})
-            .map(([key, value]) => `${key}=${Number(value).toFixed(3)}`)
-            .join(", ");
-
           const layout = {
-            margin: { l: 0, r: 0, b: 0, t: 56 },
-            paper_bgcolor: "rgba(0,0,0,0)",
-            plot_bgcolor: "rgba(0,0,0,0)",
+            margin: { l: 0, r: 72, b: 0, t: 12 },
+            paper_bgcolor: "white",
+            plot_bgcolor: "white",
             scene: {
               aspectmode: "manual",
               aspectratio: sceneAspectRatio,
               xaxis: {
                 title: {
                   text: data.x_name || record.xFeature,
-                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE },
+                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE, color: "#0f172a" },
                 },
-                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE },
-                backgroundcolor: "#f8fafc",
+                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE, color: "#334155" },
+                backgroundcolor: "white",
+                gridcolor: "#dbe3ee",
+                zerolinecolor: "#cbd5e1",
               },
               yaxis: {
                 title: {
                   text: data.y_name || record.yFeature,
-                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE },
+                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE, color: "#0f172a" },
                 },
-                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE },
-                backgroundcolor: "#f8fafc",
+                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE, color: "#334155" },
+                backgroundcolor: "white",
+                gridcolor: "#dbe3ee",
+                zerolinecolor: "#cbd5e1",
               },
               zaxis: {
                 title: {
-                  text: data.z_name || record.output,
-                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE },
+                  text: "",
+                  font: { size: INTERACTIVE_SURFACE_AXIS_TITLE_FONT_SIZE, color: "#0f172a" },
                 },
-                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE },
-                backgroundcolor: "#f8fafc",
+                tickfont: { size: INTERACTIVE_SURFACE_AXIS_TICK_FONT_SIZE, color: "#334155" },
+                backgroundcolor: "white",
+                gridcolor: "#dbe3ee",
+                zerolinecolor: "#cbd5e1",
               },
               camera: sceneCamera,
             },
-            title: {
-              text: `${record.output}<br><span style="font-size:12px;color:#64748b">Drag to rotate, scroll to zoom${fixedInputs ? `, fixed: ${fixedInputs}` : ""}</span>`,
-              x: 0.02,
-              xanchor: "left",
-            },
-            legend: {
-              orientation: "h",
-              y: 1.02,
-              x: 0.02,
-            },
+            showlegend: false,
           };
 
           Plotly.newPlot(host, traces, layout, {
@@ -957,12 +1018,16 @@
         const badges = document.createElement("div");
         badges.className = "badge-row";
         const epochsRan = Number(record.trainingMetrics.epochs_ran);
+        const layerSizes = record.trainingMetrics.hidden_layer_sizes || record.trainingConfig.hidden_layer_sizes;
+        const learningRate = Number(record.trainingMetrics.learning_rate || record.trainingConfig.learning_rate);
         badges.innerHTML = `
           <div class="badge">R2 ${formatMetric(record.metrics.r2, 4)}</div>
           <div class="badge">MAE ${formatMetric(record.metrics.mae, 4)}</div>
           <div class="badge">RMSE ${formatMetric(record.metrics.rmse, 4)}</div>
           <div class="badge">MAPE ${formatMetric(record.metrics.mape_pct, 2)}%</div>
           ${Number.isFinite(epochsRan) ? `<div class="badge">Epochs ${Math.round(epochsRan)}</div>` : ""}
+          ${Array.isArray(layerSizes) ? `<div class="badge">Layers ${layerSizes.join(",")}</div>` : ""}
+          ${Number.isFinite(learningRate) ? `<div class="badge">LR ${learningRate.toPrecision(3)}</div>` : ""}
         `;
         header.appendChild(badges);
 

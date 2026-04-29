@@ -1,0 +1,69 @@
+{
+  "unit": "ureaF_unit",
+  "target_output": "electric_kwhph",
+  "selection_metric": "val_rmse",
+  "best_result": {
+    "run_index": 13,
+    "total_runs": 16,
+    "status": "ok",
+    "config_id": "layers=8,5,3|epochs=1000|lr=0.002|batch=64|patience=25|min_delta=1e-05|l2=0|seed=15",
+    "layers": "8,5,3",
+    "num_hidden_layers": 3,
+    "max_epochs": 1000,
+    "learning_rate": 0.002,
+    "batch_size": 64,
+    "patience": 25,
+    "min_delta": 1e-05,
+    "l2_reg": 0.0,
+    "seed": 15,
+    "train_rows": 673,
+    "val_rows": 145,
+    "test_rows": 145,
+    "duration_sec": 37.541243900001064,
+    "epochs_ran": 640,
+    "best_train_loss": 0.0005138985579833388,
+    "best_val_loss": 0.0006322453846223652,
+    "train_mae": 0.09345756471157074,
+    "train_rmse": 0.13052586858458926,
+    "train_mape_pct": 0.061298871878534555,
+    "train_r2": 0.9994885921478271,
+    "val_mae": 0.10177012532949448,
+    "val_rmse": 0.14561374699619187,
+    "val_mape_pct": 0.06668350542895496,
+    "val_r2": 0.9993827939033508,
+    "test_mae": 0.11303321272134781,
+    "test_rmse": 0.1659321013881712,
+    "test_mape_pct": 0.07363775512203574,
+    "test_r2": 0.9991557002067566,
+    "trainable_parameters": 91,
+    "error_message": ""
+  },
+  "best_model_path": "ureaF_electricity_search_broad\\best_ureaF_unit_electric_kwhph.keras",
+  "portable_training_override": {
+    "ureaF_unit": {
+      "electric_kwhph": {
+        "mode": "retrain",
+        "layers": [
+          8,
+          5,
+          3
+        ],
+        "epochs": 1000
+      }
+    }
+  },
+  "standalone_training_parameters": {
+    "hidden_layer_sizes": [
+      8,
+      5,
+      3
+    ],
+    "max_epochs": 1000,
+    "learning_rate": 0.002,
+    "batch_size": 64,
+    "patience": 25,
+    "min_delta": 1e-05,
+    "l2_reg": 0.0,
+    "seed": 15
+  }
+}

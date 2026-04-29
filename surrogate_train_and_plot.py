@@ -6,6 +6,7 @@ UNIT_TRAINING_OVERRIDES. Set each output's `mode` to `saved` or `retrain`.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,7 @@ import plot_surrogate_graphviz_surface as plotter
 import surrogate_functions as sf
 
 
-# `layers`/`epochs` are only applied when `mode="retrain", "saved"`.
+# Per-output training parameters are only applied when `mode="retrain"`.
 UNIT_TRAINING_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
     "ammoniaF_unit": {
         "ammonia_kgph": {"mode": "saved", "layers": (5, 3), "epochs": 1000},
@@ -21,7 +22,7 @@ UNIT_TRAINING_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
         "electric_kwhph": {"mode": "saved", "layers": (6, 3), "epochs": 1000},
     },
     "ureaF_unit": {
-        "pure_urea_kgph": {"mode": "saved", "layers": (5, 5, 3), "epochs": 10000}, # (6, 3)
+        "pure_urea_kgph": {"mode": "retrain", "layers": (8, 5), "epochs": 10000}, # (6, 3)
         "product_urea_wtfrac": {"mode": "saved", "layers": (6, 3), "epochs": 10000},
         "electric_kwhph": {"mode": "saved", "layers": (5, 5, 3), "epochs": 10000}, # (3, 3)
     },
@@ -55,7 +56,132 @@ def build_parser() -> argparse.ArgumentParser:
         dest="show_other_points",
         help="Hide off-slice training points in the surface plots.",
     )
+    parser.add_argument(
+        "--import-summary",
+        type=Path,
+        default=None,
+        help=(
+            "Import a best_ureaF_electricity_config.json-style optimization summary "
+            "and apply its best parameters before retraining/plotting."
+        ),
+    )
+    parser.add_argument(
+        "--only-imported-output",
+        action="store_true",
+        help=(
+            "When --import-summary is used, retrain and plot only the unit/output "
+            "named in that summary."
+        ),
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=plotter.DEFAULT_OUT_ROOT,
+        help="Root directory for visualization figures and run_summary.json files.",
+    )
     return parser
+
+
+def _layer_tuple(raw_value: Any) -> tuple[int, ...]:
+    if isinstance(raw_value, str):
+        pieces = raw_value.lower().replace("x", ",").split(",")
+        return tuple(int(piece.strip()) for piece in pieces if piece.strip())
+    return tuple(int(piece) for piece in raw_value)
+
+
+def _config_from_optimizer_summary(payload: dict[str, Any]) -> tuple[
+    dict[str, dict[str, dict[str, Any]]],
+    list[tuple[str, str]],
+]:
+    portable = payload.get("portable_training_override")
+    standalone = payload.get("standalone_training_parameters") or {}
+    affected_outputs: list[tuple[str, str]] = []
+    imported: dict[str, dict[str, dict[str, Any]]] = {}
+
+    if isinstance(portable, dict) and portable:
+        for unit_name, output_configs in portable.items():
+            if not isinstance(output_configs, dict):
+                continue
+            for output_name, raw_config in output_configs.items():
+                if not isinstance(raw_config, dict):
+                    continue
+                config = dict(raw_config)
+                for key in (
+                    "learning_rate",
+                    "batch_size",
+                    "patience",
+                    "min_delta",
+                    "l2_reg",
+                    "seed",
+                ):
+                    if key in standalone and key not in config:
+                        config[key] = standalone[key]
+                config["mode"] = "retrain"
+                if "hidden_layer_sizes" in config and "layers" not in config:
+                    config["layers"] = _layer_tuple(config.pop("hidden_layer_sizes"))
+                if "layers" in config:
+                    config["layers"] = _layer_tuple(config["layers"])
+                imported.setdefault(str(unit_name), {})[str(output_name)] = config
+                affected_outputs.append((str(unit_name), str(output_name)))
+
+    if not imported and standalone:
+        unit_name = str(payload.get("unit", "ureaF_unit"))
+        output_name = str(payload.get("target_output", "electric_kwhph"))
+        config = {
+            "mode": "retrain",
+            "layers": _layer_tuple(standalone["hidden_layer_sizes"]),
+            "epochs": int(standalone["max_epochs"]),
+            "learning_rate": float(standalone["learning_rate"]),
+            "batch_size": int(standalone["batch_size"]),
+            "patience": int(standalone["patience"]),
+            "min_delta": float(standalone.get("min_delta", sf.ANN_MIN_DELTA)),
+            "l2_reg": float(standalone.get("l2_reg", sf.ANN_L2_REG)),
+        }
+        if "seed" in standalone:
+            config["seed"] = int(standalone["seed"])
+        imported.setdefault(unit_name, {})[output_name] = config
+        affected_outputs.append((unit_name, output_name))
+
+    if not imported:
+        raise ValueError(
+            "The imported summary does not contain `portable_training_override` "
+            "or `standalone_training_parameters`."
+        )
+
+    return imported, affected_outputs
+
+
+def import_training_summary(
+    summary_path: Path,
+    only_imported_output: bool,
+) -> list[tuple[str, str]]:
+    with summary_path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+
+    imported_overrides, affected_outputs = _config_from_optimizer_summary(payload)
+
+    if only_imported_output:
+        known_outputs = {
+            "ammoniaF_unit": sf.AMMONIA_COMPONENT_OUTPUT_COLUMNS,
+            "ureaF_unit": sf.UREA_DIRECT_OUTPUT_COLUMNS,
+        }
+        for unit_name, output_names in known_outputs.items():
+            if unit_name not in imported_overrides:
+                continue
+            unit_overrides = UNIT_TRAINING_OVERRIDES.setdefault(unit_name, {})
+            for output_name in output_names:
+                unit_overrides[output_name] = {"mode": "saved"}
+
+    for unit_name, output_configs in imported_overrides.items():
+        unit_overrides = UNIT_TRAINING_OVERRIDES.setdefault(unit_name, {})
+        for output_name, config in output_configs.items():
+            unit_overrides[output_name] = config
+            print(
+                f"Imported {unit_name}.{output_name} training config from "
+                f"{summary_path}: {config}"
+            )
+
+    return affected_outputs
 
 
 def _load_unit_training_frames(unit_name: str):
@@ -180,8 +306,10 @@ def _build_bundle_training_config(
         "learning_rate": sf.ANN_LEARNING_RATE,
         "max_epochs": sf.ANN_MAX_EPOCHS,
         "patience": sf.ANN_PATIENCE,
+        "min_delta": sf.ANN_MIN_DELTA,
         "validation_split": sf.ANN_VALIDATION_SPLIT,
         "batch_size": sf.ANN_BATCH_SIZE,
+        "l2_reg": sf.ANN_L2_REG,
     }
     return {
         **defaults,
@@ -301,17 +429,40 @@ def sync_unit_bundle(unit_name: str) -> None:
 
 def main() -> None:
     args = build_parser().parse_args()
+    imported_outputs: list[tuple[str, str]] = []
+    if args.import_summary is not None:
+        imported_outputs = import_training_summary(
+            args.import_summary,
+            only_imported_output=args.only_imported_output,
+        )
 
-    for unit_name in ("ammoniaF_unit", "ureaF_unit"):
+    if args.only_imported_output and imported_outputs:
+        units_to_sync = tuple(dict.fromkeys(unit_name for unit_name, _ in imported_outputs))
+    else:
+        units_to_sync = ("ammoniaF_unit", "ureaF_unit")
+
+    for unit_name in units_to_sync:
         sync_unit_bundle(unit_name)
 
-    for unit_name in ("ureaF_unit", "ammoniaF_unit"):
-        plotter.run_visualizations(
-            unit=unit_name,
-            model_dir=sf.DEFAULT_MODEL_DIR,
-            show_other_points=args.show_other_points,
-            bundle_mode="saved",
-        )
+    if args.only_imported_output and imported_outputs:
+        for unit_name, output_name in imported_outputs:
+            plotter.run_visualizations(
+                unit=unit_name,
+                output=output_name,
+                model_dir=sf.DEFAULT_MODEL_DIR,
+                out_dir=args.out_dir,
+                show_other_points=args.show_other_points,
+                bundle_mode="saved",
+            )
+    else:
+        for unit_name in ("ureaF_unit", "ammoniaF_unit"):
+            plotter.run_visualizations(
+                unit=unit_name,
+                model_dir=sf.DEFAULT_MODEL_DIR,
+                out_dir=args.out_dir,
+                show_other_points=args.show_other_points,
+                bundle_mode="saved",
+            )
 
 
 if __name__ == "__main__":

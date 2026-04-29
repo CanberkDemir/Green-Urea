@@ -1,0 +1,179 @@
+{
+  "unit": "ureaF_unit",
+  "target_output": "electric_kwhph",
+  "results_csv": "D:\\University\\CHBI\\CHBI-491\\ureaF_results_live.csv",
+  "rows_loaded": 963,
+  "feature_names": [
+    "Fnh3",
+    "Fco2"
+  ],
+  "target_min": 138.28569618683554,
+  "target_max": 162.83019772297777,
+  "target_mean": 155.45578527230714,
+  "split_seed": 15,
+  "test_fraction": 0.15,
+  "validation_fraction": 0.15,
+  "train_rows": 673,
+  "val_rows": 145,
+  "test_rows": 145,
+  "selection_metric": "val_rmse",
+  "total_runs": 12,
+  "configs": [
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 128,
+      "patience": 10,
+      "min_delta": 1e-05,
+      "l2_reg": 0.0,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 128,
+      "patience": 10,
+      "min_delta": 1e-05,
+      "l2_reg": 1e-06,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 128,
+      "patience": 25,
+      "min_delta": 1e-05,
+      "l2_reg": 0.0,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 128,
+      "patience": 25,
+      "min_delta": 1e-05,
+      "l2_reg": 1e-06,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 256,
+      "patience": 10,
+      "min_delta": 1e-05,
+      "l2_reg": 0.0,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 256,
+      "patience": 10,
+      "min_delta": 1e-05,
+      "l2_reg": 1e-06,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 256,
+      "patience": 25,
+      "min_delta": 1e-05,
+      "l2_reg": 0.0,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.001,
+      "batch_size": 256,
+      "patience": 25,
+      "min_delta": 1e-05,
+      "l2_reg": 1e-06,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.002,
+      "batch_size": 128,
+      "patience": 10,
+      "min_delta": 1e-05,
+      "l2_reg": 0.0,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.002,
+      "batch_size": 128,
+      "patience": 10,
+      "min_delta": 1e-05,
+      "l2_reg": 1e-06,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.002,
+      "batch_size": 128,
+      "patience": 25,
+      "min_delta": 1e-05,
+      "l2_reg": 0.0,
+      "seed": 15
+    },
+    {
+      "hidden_layer_sizes": [
+        3,
+        3
+      ],
+      "max_epochs": 400,
+      "learning_rate": 0.002,
+      "batch_size": 128,
+      "patience": 25,
+      "min_delta": 1e-05,
+      "l2_reg": 1e-06,
+      "seed": 15
+    }
+  ]
+}

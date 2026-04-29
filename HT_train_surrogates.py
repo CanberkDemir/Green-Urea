@@ -64,6 +64,8 @@ AMMONIAF_RESULTS_CSV = Path("ammoniaF_results_live.csv")
 AMMONIAF_CASE_GRID_CSV = Path("ammoniaF_case_grid.csv")
 AMMONIAF_INPUTS_CSV = Path("ammoniaF_inputs.csv")
 SHOW_INTERACTIVE_3D_PLOTS = False
+ISOMETRIC_ELEVATION_DEG = 35.264389682754654
+ISOMETRIC_AZIMUTH_DEG = -135
 HT_TEST_FRACTION = 0.15
 HT_RANDOM_SEED = 15
 HT_ENABLE_HYPERPARAMETER_EXPLORATION = True
@@ -1270,7 +1272,7 @@ def _make_labeled_surrogate_plots(
     ax2.set_ylabel(y_name)
     ax2.set_zlabel(z_name)
     ax2.set_title(f"{unit_name}: {z_name} (piecewise planes)")
-    ax2.view_init(elev=24, azim=-135)
+    ax2.view_init(elev=ISOMETRIC_ELEVATION_DEG, azim=ISOMETRIC_AZIMUTH_DEG)
     ax2.legend(loc="upper left", fontsize=8)
     fig2.tight_layout()
     if save and out_prefix is not None:
