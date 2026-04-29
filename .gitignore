@@ -207,3 +207,10 @@ gurobi.lic
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Directories
+OldDocs
+OtherFiles
+WindEnergy
+ureaV3_1
+.vscode

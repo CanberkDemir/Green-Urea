@@ -1,0 +1,4 @@
+omlt @ git+https://github.com/cog-imperial/OMLT
+systems2atoms @ git+https://github.com/LLNL/systems2atoms
+hyperplanetree @ git+https://git@github.com/LLNL/systems2atoms#subdirectory=systems2atoms/hyperplanetree
+tensorflow
