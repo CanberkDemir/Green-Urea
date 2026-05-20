@@ -30,18 +30,30 @@ import surrogate_functions as sf
 
 THIS_DIR = Path(__file__).resolve().parent
 DEFAULT_OUT_ROOT = THIS_DIR / "surrogate_visualizations"
-ISOMETRIC_ELEVATION_DEG = 20.264389682754654
+ISOMETRIC_ELEVATION_DEG = 20.
 ISOMETRIC_AZIMUTH_DEG = -45
 SURFACE_CAMERA_ELEVATION_DEG = ISOMETRIC_ELEVATION_DEG
 SURFACE_CAMERA_AZIMUTH_DEG = ISOMETRIC_AZIMUTH_DEG
 SURFACE_CAMERA_ROLL_DEG = 0
+SURFACE_CAMERA_VERTICAL_AXIS = "z"
+SURFACE_PROJECTION_TYPE = "ortho"
 SURFACE_AXIS_LABEL_FONTSIZE = 18
 SURFACE_TICK_LABEL_FONTSIZE = 12
 SURFACE_Z_LABELPAD = 28
 SURFACE_EXTERNAL_Z_LABEL_X = 0.90
 SURFACE_EXTERNAL_Z_LABEL_Y = 0.52
+SURFACE_ALPHA = 0.96
 SURFACE_POINT_SIZE = 2.0
-SURFACE_POINT_ALPHA = 0.28
+bias = 0.2
+SURFACE_POINT_ALPHA = 1
+SURFACE_SLICE_POINT_ALPHA = 1
+SURFACE_GRID_ALPHA = 1
+SURFACE_GRID_LINEWIDTH = 0.8
+PARITY_POINT_ALPHA = 0.50 +bias
+PARITY_GRID_ALPHA = 1
+TRAINING_LOSS_GRID_ALPHA = 0.58 +bias
+# Set to "transparent" for see-through PNG backgrounds, or "white" for white backgrounds.
+PLOT_BACKGROUND = "transparent"
 DEFAULT_VIEW = {
     "ammoniaF_unit": {
         "output": "ammonia_kgph",
@@ -54,6 +66,44 @@ DEFAULT_VIEW = {
         "y": "Fco2",
     },
 }
+
+
+def _plot_background_is_transparent() -> bool:
+    background = PLOT_BACKGROUND.strip().lower()
+    if background in {"transparent", "see-through", "see_through", "none"}:
+        return True
+    if background == "white":
+        return False
+    raise ValueError('PLOT_BACKGROUND must be "white" or "transparent".')
+
+
+def _plot_background_color() -> str:
+    return "none" if _plot_background_is_transparent() else "white"
+
+
+def _savefig_kwargs() -> Dict[str, Any]:
+    transparent = _plot_background_is_transparent()
+    return {
+        "facecolor": "none" if transparent else "white",
+        "transparent": transparent,
+    }
+
+
+def _graphviz_background_color() -> str:
+    return "transparent" if _plot_background_is_transparent() else "white"
+
+
+def _apply_surface_camera(ax: Any) -> None:
+    ax.set_proj_type(SURFACE_PROJECTION_TYPE)
+    try:
+        ax.view_init(
+            elev=SURFACE_CAMERA_ELEVATION_DEG,
+            azim=SURFACE_CAMERA_AZIMUTH_DEG,
+            roll=SURFACE_CAMERA_ROLL_DEG,
+            vertical_axis=SURFACE_CAMERA_VERTICAL_AXIS,
+        )
+    except TypeError:
+        ax.view_init(elev=SURFACE_CAMERA_ELEVATION_DEG, azim=SURFACE_CAMERA_AZIMUTH_DEG)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -351,7 +401,14 @@ def render_graphviz_network(
     out_dir: Path,
 ) -> Path:
     dot = Digraph(name=f"{output_name}_network", format="png")
-    dot.attr(rankdir="LR", splines="line", overlap="false", nodesep="0.28", ranksep="0.7")
+    dot.attr(
+        rankdir="LR",
+        splines="line",
+        overlap="false",
+        nodesep="0.28",
+        ranksep="0.7",
+        bgcolor=_graphviz_background_color(),
+    )
 
     input_nodes: list[str] = []
     with dot.subgraph(name="cluster_inputs") as sub:
@@ -483,17 +540,20 @@ def render_surface_plot(
         "show_other_points": show_other_points,
     }
 
+    background_color = _plot_background_color()
+    background_alpha = 0.0 if _plot_background_is_transparent() else 1.0
+
     fig = plt.figure(figsize=(9.5, 7.0))
-    fig.patch.set_facecolor("white")
+    fig.patch.set_facecolor(background_color)
     ax = fig.add_subplot(111, projection="3d")
-    ax.set_facecolor("white")
+    ax.set_facecolor(background_color)
     for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
-        axis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+        axis.pane.set_facecolor((1.0, 1.0, 1.0, background_alpha))
         axis.pane.set_edgecolor("#d1d5db")
-        axis._axinfo["grid"]["color"] = (0.82, 0.86, 0.91, 0.55)
-        axis._axinfo["grid"]["linewidth"] = 0.6
+        axis._axinfo["grid"]["color"] = (0.67, 0.72, 0.79, SURFACE_GRID_ALPHA)
+        axis._axinfo["grid"]["linewidth"] = SURFACE_GRID_LINEWIDTH
         axis.set_tick_params(labelsize=SURFACE_TICK_LABEL_FONTSIZE)
-    ax.plot_surface(xx, yy, zz, cmap="viridis", linewidth=0, antialiased=True, alpha=0.82)
+    ax.plot_surface(xx, yy, zz, cmap="viridis", linewidth=0, antialiased=True, alpha=SURFACE_ALPHA)
     if len(other_points) > 0:
         ax.scatter(
             other_points[x_name].to_numpy(dtype=float),
@@ -512,7 +572,7 @@ def render_surface_plot(
             slice_y,
             c="#475569",
             s=SURFACE_POINT_SIZE,
-            alpha=0.38,
+            alpha=SURFACE_SLICE_POINT_ALPHA,
             depthshade=False,
             label="Points on fixed slice",
         )
@@ -531,17 +591,10 @@ def render_surface_plot(
         color="#0f172a",
     )
     ax.tick_params(axis="both", which="major", labelsize=SURFACE_TICK_LABEL_FONTSIZE, pad=4)
-    try:
-        ax.view_init(
-            elev=SURFACE_CAMERA_ELEVATION_DEG,
-            azim=SURFACE_CAMERA_AZIMUTH_DEG,
-            roll=SURFACE_CAMERA_ROLL_DEG,
-        )
-    except TypeError:
-        ax.view_init(elev=SURFACE_CAMERA_ELEVATION_DEG, azim=SURFACE_CAMERA_AZIMUTH_DEG)
+    _apply_surface_camera(ax)
     fig.tight_layout()
     out_path = out_dir / "surface_vs_datapoints.png"
-    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", **_savefig_kwargs())
     if interactive:
         plt.show(block=True)
     plt.close(fig)
@@ -558,15 +611,17 @@ def render_parity_plot(
     lo = float(min(np.min(y_true), np.min(y_pred)))
     hi = float(max(np.max(y_true), np.max(y_pred)))
 
+    background_color = _plot_background_color()
+
     fig, ax = plt.subplots(figsize=(6.2, 6.0))
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-    ax.scatter(y_true, y_pred, s=8, alpha=0.28, color="#64748b", edgecolors="none")
+    fig.patch.set_facecolor(background_color)
+    ax.set_facecolor(background_color)
+    ax.scatter(y_true, y_pred, s=8, alpha=PARITY_POINT_ALPHA, color="#475569", edgecolors="none")
     ax.plot([lo, hi], [lo, hi], linestyle="--", color="black", linewidth=1.0)
     ax.set_xlabel("Actual", fontsize=16, fontweight="bold")
     ax.set_ylabel("Predicted", fontsize=16, fontweight="bold")
     ax.tick_params(axis="both", which="major", labelsize=11)
-    ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.35)
+    ax.grid(True, linestyle="--", linewidth=0.7, alpha=PARITY_GRID_ALPHA)
     ax.set_title(f"{output_name}: parity plot", fontsize=13, pad=12)
     ax.text(
         0.03,
@@ -576,11 +631,15 @@ def render_parity_plot(
         ha="left",
         va="top",
         fontsize=9,
-        bbox={"boxstyle": "round,pad=0.35", "facecolor": "white", "alpha": 0.85},
+        bbox={
+            "boxstyle": "round,pad=0.35",
+            "facecolor": background_color,
+            "alpha": 0.0 if _plot_background_is_transparent() else 0.85,
+        },
     )
     fig.tight_layout()
     out_path = out_dir / "parity_plot.png"
-    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", **_savefig_kwargs())
     plt.close(fig)
     return out_path
 
@@ -597,9 +656,11 @@ def render_training_loss_plot(
     if train_loss.size == 0 and val_loss.size == 0:
         return None
 
+    background_color = _plot_background_color()
+
     fig, ax = plt.subplots(figsize=(6.4, 4.4))
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
+    fig.patch.set_facecolor(background_color)
+    ax.set_facecolor(background_color)
 
     if train_loss.size > 0:
         ax.plot(
@@ -628,13 +689,13 @@ def render_training_loss_plot(
     ax.set_ylabel("Loss", fontsize=15, fontweight="bold")
     ax.tick_params(axis="both", which="major", labelsize=11)
     ax.set_title(f"{output_name}: training loss curve", fontsize=13, pad=12)
-    ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.45)
+    ax.grid(True, linestyle="--", linewidth=0.7, alpha=TRAINING_LOSS_GRID_ALPHA)
     if train_loss.size > 0 or val_loss.size > 0:
         ax.legend()
     fig.tight_layout()
 
     out_path = out_dir / "training_loss_curve.png"
-    fig.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
+    fig.savefig(out_path, dpi=300, bbox_inches="tight", **_savefig_kwargs())
     plt.close(fig)
     return out_path
 

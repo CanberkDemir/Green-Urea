@@ -1,5 +1,5 @@
 digraph water_kgph_network {
-	nodesep=0.28 overlap=false rankdir=LR ranksep=0.7 splines=line
+	bgcolor=transparent nodesep=0.28 overlap=false rankdir=LR ranksep=0.7 splines=line
 	subgraph cluster_inputs {
 		color="#cbd5e1" label=Inputs
 		in_0 [label=Ft color="#60a5fa" fillcolor="#dbeafe" shape=box style="rounded,filled"]

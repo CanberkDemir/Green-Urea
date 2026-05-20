@@ -196,6 +196,20 @@
       0.002285666996613145
     ]
   },
+  "training_config": {
+    "hidden_layer_sizes": [
+      5,
+      5,
+      3
+    ],
+    "max_epochs": 1000,
+    "learning_rate": 0.002,
+    "batch_size": 256,
+    "patience": 10,
+    "min_delta": 1e-05,
+    "validation_split": 0.15,
+    "l2_reg": 1e-06
+  },
   "network_graph_png": "D:\\University\\CHBI\\CHBI-491\\surrogate_visualizations\\ammoniaF_unit\\water_kgph\\Ft__Fh2\\network_graph.png",
   "surface_plot_png": "D:\\University\\CHBI\\CHBI-491\\surrogate_visualizations\\ammoniaF_unit\\water_kgph\\Ft__Fh2\\surface_vs_datapoints.png",
   "parity_plot_png": "D:\\University\\CHBI\\CHBI-491\\surrogate_visualizations\\ammoniaF_unit\\water_kgph\\Ft__Fh2\\parity_plot.png",
@@ -15157,6 +15171,6 @@
       "z": []
     },
     "fixed_inputs": {},
-    "show_other_points": true
+    "show_other_points": false
   }
 }

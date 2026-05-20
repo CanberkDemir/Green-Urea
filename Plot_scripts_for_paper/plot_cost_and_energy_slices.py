@@ -20,8 +20,8 @@ INNER_LABEL_FONT_SIZE = BASE_FONT_SIZE
 CAPITAL_AXIS_FONT_SIZE = BASE_FONT_SIZE
 CAPITAL_TICK_FONT_SIZE = BASE_FONT_SIZE
 CAPITAL_VALUE_FONT_SIZE = BASE_FONT_SIZE - 0.5
-ENERGY_TEXT_FONT_SIZE = BASE_FONT_SIZE
-PIE_PERCENT_FONT_SIZE = BASE_FONT_SIZE - 0.5
+ENERGY_TEXT_FONT_SIZE = BASE_FONT_SIZE * 1.5
+PIE_PERCENT_FONT_SIZE = BASE_FONT_SIZE * 1.6
 LEGEND_FONT_SIZE = BASE_FONT_SIZE - 1.0
 
 # Figure size and geometry knobs for manual tuning.
@@ -48,6 +48,7 @@ ENERGY_MIN_RADIUS = 0.62 * CIRCLE_SCALE
 ENERGY_RADIUS_SPAN = 0.38 * CIRCLE_SCALE
 ENERGY_LABEL_Y = -1.20 * CIRCLE_SCALE
 ENERGY_LEGEND_BBOX = (0.5, 0.01)
+ENERGY_LEGEND_FONT_SIZE = BASE_FONT_SIZE * 1.8
 ENERGY_LAYOUT_RECT = (0.02, 0.12, 0.98, 0.98)
 
 DETAILED_FIGSIZE = (7.2 * FIGURE_SCALE, 5.2 * FIGURE_SCALE)
@@ -80,6 +81,7 @@ CASES = [
     ("5% Grid", ROOT / "ipps_solution_smallhorizon_grid_5pct.csv"),
     ("Wind only", ROOT / "ipps_solution_smallhorizon_wind_only.csv"),
 ]
+ENERGY_CASES = ("Grid only", "Wind only")
 
 CRF = 0.05
 COST_RATES = {
@@ -672,10 +674,13 @@ def draw_pie_grid(case_data, output_name, show_cost_total=False):
     else:
         totals = [sum(values.values()) for _, values, *_ in case_data]
     max_total = max(abs(total) for total in totals)
-    fig, axes = plt.subplots(2, 2, figsize=ENERGY_FIGSIZE)
+    ncols = min(2, len(case_data))
+    nrows = int(np.ceil(len(case_data) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=ENERGY_FIGSIZE)
+    axes = np.atleast_1d(axes).flat
     legend_labels = []
 
-    for ax, data, total in zip(axes.flat, case_data, totals):
+    for ax, data, total in zip(axes, case_data, totals):
         case_name, values, *extra = data
         labels = list(values)
         sizes = list(values.values())
@@ -716,7 +721,7 @@ def draw_pie_grid(case_data, output_name, show_cost_total=False):
         handles=legend_handles,
         loc="lower center",
         ncol=legend_cols,
-        fontsize=LEGEND_FONT_SIZE,
+        fontsize=ENERGY_LEGEND_FONT_SIZE,
         frameon=False,
         bbox_to_anchor=ENERGY_LEGEND_BBOX,
     )
@@ -741,7 +746,8 @@ def main():
         total_npw_data.append(
             (case_name, npw_costs, npw_capex_total, npw_opex_total, npw_oxygen_credit)
         )
-        energy_data.append((case_name, energy_components(df)))
+        if case_name in ENERGY_CASES:
+            energy_data.append((case_name, energy_components(df)))
         if case_name == "Wind only":
             wind_only_df = df
 
