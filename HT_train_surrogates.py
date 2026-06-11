@@ -71,11 +71,11 @@ HT_RANDOM_SEED = 15
 HT_ENABLE_HYPERPARAMETER_EXPLORATION = True
 HT_DEFAULT_HYPERPARAMETERS = {
     "criterion": "mae",
-    "max_depth": 5,
+    "max_depth": 4,
     "max_bins": 16,
     "min_impurity_decrease": -.1,
     "num_terms": 2,
-    "max_weight": 1,
+    "max_weight": 3,
     "do_symmetrize": True,
     "do_scaling": True,
     "torch_device": "cpu",
@@ -83,7 +83,7 @@ HT_DEFAULT_HYPERPARAMETERS = {
     "ridge": 1e-5,
 }
 HT_MIN_SAMPLES_LEAF_SEARCH = np.logspace(-6, -1, 11).tolist()
-HT_MAX_WEIGHT_SEARCH = [3, 6]
+HT_MAX_WEIGHT_SEARCH = [3]
 
 UREAF_RESULTS_CSV = Path("ureaF_results_live.csv")
 UREAF_TRAIN_ALL_HEAT_DUTIES = True
@@ -331,6 +331,25 @@ def _resolve_ht_hyperparameter_candidates(n_samples: int) -> List[Dict[str, obje
     return candidates
 
 
+def _leaf_coefficient_stats(model) -> Dict[str, int]:
+    """Count zero vs total leaf-regression coefficients (intercepts excluded).
+
+    With elastic-net/lasso leaf regularization the sklearn leaves produce
+    exact zeros, so this directly measures the sparsity induced by EN.
+    """
+    n_zero = 0
+    n_total = 0
+    for leaf in getattr(model, "_leaves", {}).values():
+        leaf_model = getattr(leaf, "model", None)
+        coef = getattr(leaf_model, "coef_", None)
+        if coef is None:
+            continue
+        coef = np.asarray(coef, dtype=float).reshape(-1)
+        n_total += coef.size
+        n_zero += int(np.sum(coef == 0.0))
+    return {"n_zero_coefs": n_zero, "n_total_coefs": n_total}
+
+
 def _torch_frame(df: pd.DataFrame) -> torch.Tensor:
     return torch.tensor(df.to_numpy(dtype=np.float32), dtype=torch.float32)
 
@@ -354,7 +373,11 @@ def _build_gallery_summary_record(
     surface_plot_path: Path,
     parity_plot_path: Path,
     surface_data: Dict[str, object] | None,
+    partition_plot_path: Path | None = None,
+    coef_stats: Dict[str, int] | None = None,
 ) -> Dict[str, object]:
+    partition_png = str(partition_plot_path.resolve()) if partition_plot_path else ""
+    coef_stats = coef_stats or {}
     return {
         "unit": gallery_unit_name,
         "output": output_name,
@@ -365,12 +388,16 @@ def _build_gallery_summary_record(
         "training_metrics": {
             "model_kind": "hyperplane_tree",
             "n_leaves": int(n_leaves),
+            "n_zero_coefs": coef_stats.get("n_zero_coefs"),
+            "n_total_coefs": coef_stats.get("n_total_coefs"),
             "fixed_inputs": fixed_inputs,
         },
-        "network_graph_png": "",
+        # The leaf-partition map of the input domain is shown in the otherwise
+        # unused network-graph and training-loss gallery slots.
+        "network_graph_png": partition_png,
         "surface_plot_png": str(surface_plot_path.resolve()),
         "parity_plot_png": str(parity_plot_path.resolve()),
-        "training_loss_png": "",
+        "training_loss_png": partition_png,
         "surface_data": surface_data,
     }
 
@@ -905,6 +932,7 @@ def _fit_bundle(
         evaluation_outputs[y_name] = {
             "selected_params": best_summary["params"],
             "n_leaves": best_summary["n_leaves"],
+            "leaf_coef_stats": _leaf_coefficient_stats(best_model),
             "train_metrics": best_summary["train_metrics"],
             "test_metrics": best_summary["test_metrics"],
             "exploration": exploration_rows if HT_ENABLE_HYPERPARAMETER_EXPLORATION else [],
@@ -992,6 +1020,13 @@ def _print_unit_validation_report(
                 f"      selected HT params: {output_eval.get('selected_params', {})} | "
                 f"leaves={output_eval.get('n_leaves', 'n/a')}"
             )
+            coef_stats = output_eval.get("leaf_coef_stats", {})
+            if coef_stats.get("n_total_coefs"):
+                print(
+                    "      leaf coefficients: "
+                    f"{coef_stats['n_zero_coefs']} zero / {coef_stats['n_total_coefs']} total "
+                    f"({100.0 * coef_stats['n_zero_coefs'] / coef_stats['n_total_coefs']:.1f}% sparse)"
+                )
 
     if set(AMMONIA_COMPONENT_OUTPUT_COLUMNS).issubset(Y.columns):
         print(
@@ -1418,11 +1453,13 @@ def save_ammoniaF_tree_plots(
 
             metrics = _prediction_metrics(y_true, y_pred)
             n_leaves = len(getattr(model_4d, "_leaves", []))
+            coef_stats = _leaf_coefficient_stats(model_4d)
 
             print(
                 f"ammoniaF_unit | {x_name} vs {y_name} | {output_name} | "
                 f"Full reduced-model slice | "
                 f"Leaves: {n_leaves} | "
+                f"Zero coefs: {coef_stats['n_zero_coefs']}/{coef_stats['n_total_coefs']} | "
                 f"MAE: {metrics['mae']:.4f} | "
                 f"MAPE: {metrics['mape_pct']:.2f}% | "
                 f"Fixed inputs: {fixed_inputs}"
@@ -1448,6 +1485,7 @@ def save_ammoniaF_tree_plots(
             )
             saved_plot_paths = plot_payload["saved_files"]
             surface_plot_path = saved_plot_paths[-1] if saved_plot_paths else pair_dir / f"{output_name}_view2.png"
+            partition_plot_path = saved_plot_paths[0] if saved_plot_paths else pair_dir / f"{output_name}_view1.png"
 
             gallery_pair_dir = gallery_root / output_name / f"{x_name}__{y_name}"
             gallery_pair_dir.mkdir(parents=True, exist_ok=True)
@@ -1470,6 +1508,8 @@ def save_ammoniaF_tree_plots(
                 surface_plot_path=surface_plot_path,
                 parity_plot_path=parity_plot_path,
                 surface_data=plot_payload["surface_data"],
+                partition_plot_path=partition_plot_path,
+                coef_stats=coef_stats,
             )
             with (gallery_pair_dir / "summary.json").open("w", encoding="utf-8") as f:
                 json.dump(summary, f, indent=2)
@@ -1487,6 +1527,8 @@ def save_ammoniaF_tree_plots(
                 "r2": float(metrics["r2"]),
                 "mape": float(metrics["mape_pct"]),
                 "n_leaves": int(n_leaves),
+                "n_zero_coefs": int(coef_stats["n_zero_coefs"]),
+                "n_total_coefs": int(coef_stats["n_total_coefs"]),
             })
 
     pd.DataFrame(all_metrics).to_csv(plot_root / "phase_plot_metrics.csv", index=False)
@@ -1583,11 +1625,13 @@ def save_ureaF_tree_plots(
 
             metrics = _prediction_metrics(y_true, y_pred)
             n_leaves = len(getattr(model, "_leaves", []))
+            coef_stats = _leaf_coefficient_stats(model)
 
             print(
                 f"ureaF_unit | {x_name} vs {y_name} | {output_name} | "
                 f"Full model slice | "
                 f"Leaves: {n_leaves} | "
+                f"Zero coefs: {coef_stats['n_zero_coefs']}/{coef_stats['n_total_coefs']} | "
                 f"MAE: {metrics['mae']:.6f} | "
                 f"MAPE: {metrics['mape_pct']:.2f}% | "
                 f"Fixed inputs: {fixed_inputs}"
@@ -1613,6 +1657,7 @@ def save_ureaF_tree_plots(
             )
             saved_plot_paths = plot_payload["saved_files"]
             surface_plot_path = saved_plot_paths[-1] if saved_plot_paths else pair_dir / f"{output_name}_view2.png"
+            partition_plot_path = saved_plot_paths[0] if saved_plot_paths else pair_dir / f"{output_name}_view1.png"
 
             gallery_pair_dir = gallery_root / output_name / f"{x_name}__{y_name}"
             gallery_pair_dir.mkdir(parents=True, exist_ok=True)
@@ -1635,6 +1680,8 @@ def save_ureaF_tree_plots(
                 surface_plot_path=surface_plot_path,
                 parity_plot_path=parity_plot_path,
                 surface_data=plot_payload["surface_data"],
+                partition_plot_path=partition_plot_path,
+                coef_stats=coef_stats,
             )
             with (gallery_pair_dir / "summary.json").open("w", encoding="utf-8") as f:
                 json.dump(summary, f, indent=2)
@@ -1652,6 +1699,8 @@ def save_ureaF_tree_plots(
                 "r2": float(metrics["r2"]),
                 "mape": float(metrics["mape_pct"]),
                 "n_leaves": int(n_leaves),
+                "n_zero_coefs": int(coef_stats["n_zero_coefs"]),
+                "n_total_coefs": int(coef_stats["n_total_coefs"]),
                 "include_all_heat_duties": bool(include_all_heat_duties),
             })
 

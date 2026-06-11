@@ -1,10 +1,4 @@
-unit,x_feature,y_feature,output,slice_type,fixed_inputs,mae,mape,n_leaves
-ammoniaF_unit,Ft,Fh2,ammonia_kgph,full_reduced_model,"{""K_N"": 7.853981633974483}",0.23582564640875123,2.0207707333316534,81
-ammoniaF_unit,Ft,Fh2,water_kgph,full_reduced_model,"{""K_N"": 7.853981633974483}",10.441717645378928,0.5599462290645755,81
-ammoniaF_unit,Ft,Fh2,electric_kwhph,full_reduced_model,"{""K_N"": 7.853981633974483}",30.84671526419426,4.175014032738692,75
-ammoniaF_unit,Ft,K_N,ammonia_kgph,full_reduced_model,"{""Fh2"": 13.448275862068966}",0.23582564640875123,2.0207707333316534,81
-ammoniaF_unit,Ft,K_N,water_kgph,full_reduced_model,"{""Fh2"": 13.448275862068966}",10.441717645378928,0.5599462290645755,81
-ammoniaF_unit,Ft,K_N,electric_kwhph,full_reduced_model,"{""Fh2"": 13.448275862068966}",30.84671526419426,4.175014032738692,75
-ammoniaF_unit,Fh2,K_N,ammonia_kgph,full_reduced_model,"{""Ft"": 7358.620689655172}",0.23582564640875123,2.0207707333316534,81
-ammoniaF_unit,Fh2,K_N,water_kgph,full_reduced_model,"{""Ft"": 7358.620689655172}",10.441717645378928,0.5599462290645755,81
-ammoniaF_unit,Fh2,K_N,electric_kwhph,full_reduced_model,"{""Ft"": 7358.620689655172}",30.84671526419426,4.175014032738692,75
+unit,x_feature,y_feature,output,slice_type,fixed_inputs,mae,rmse,r2,mape,n_leaves,n_zero_coefs,n_total_coefs
+ammoniaF_unit,Ft,Fh2,ammonia_kgph,full_reduced_model,{},0.1459032448043505,0.3233398999669935,0.9798607499775558,1.2138288449761792,13,0,26
+ammoniaF_unit,Ft,Fh2,water_kgph,full_reduced_model,{},15.856907452483805,68.83182214058672,0.9655109647307248,0.8523976774938266,16,0,32
+ammoniaF_unit,Ft,Fh2,electric_kwhph,full_reduced_model,{},43.54380052993725,163.81702523438102,0.9528775291256559,7.718740202382722,16,0,32

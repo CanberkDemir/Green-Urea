@@ -1,0 +1,4 @@
+unit,x_feature,y_feature,output,slice_type,fixed_inputs,mae,rmse,r2,mape,n_leaves,n_zero_coefs,n_total_coefs,include_all_heat_duties
+ureaF_unit,Fnh3,Fco2,pure_urea_kgph,full_model,{},0.019268783362850355,0.02917675906738794,0.9996837586570788,3.503851690490114,16,1,32,True
+ureaF_unit,Fnh3,Fco2,product_urea_wtfrac,full_model,{},0.0031676037651277673,0.004160286666725329,0.9987179032366432,5.631825310487303,16,4,32,True
+ureaF_unit,Fnh3,Fco2,electric_kwhph,full_model,{},0.14837473666901266,0.24121494352648531,0.9989131917383286,0.09792400543259173,16,3,32,True

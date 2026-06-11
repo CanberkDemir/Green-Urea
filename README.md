@@ -1,5 +1,23 @@
 # Script Runner Guide
 
+## Environment Setup
+
+This project uses a local Python 3.11 virtual environment (`.venv`).
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip setuptools wheel
+pip install -r requirements-light.txt
+pip install -r requirements-heavy.txt
+```
+
+Set the Gurobi license file if needed:
+
+```powershell
+$env:GRB_LICENSE_FILE = "$PWD\gurobi.lic"
+```
+
 Notes:
 
 - The Aspen runners require Aspen Plus on Windows.

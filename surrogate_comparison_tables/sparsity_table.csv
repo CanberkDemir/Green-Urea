@@ -1,0 +1,7 @@
+unit,output,leaves_ridge,leaves_en,zero/total_coefs_ridge,zero/total_coefs_en,sparsity_pct_en
+ammoniaF_unit,ammonia_kgph,13,10,0 / 26,3 / 20,15.0
+ammoniaF_unit,electric_kwhph,16,15,0 / 32,0 / 30,0.0
+ammoniaF_unit,water_kgph,16,16,0 / 32,3 / 32,9.4
+ureaF_unit,electric_kwhph,16,16,0 / 32,3 / 32,9.4
+ureaF_unit,product_urea_wtfrac,16,16,0 / 32,4 / 32,12.5
+ureaF_unit,pure_urea_kgph,16,16,0 / 32,1 / 32,3.1

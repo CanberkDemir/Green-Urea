@@ -1,4 +1,6 @@
 omlt @ git+https://github.com/cog-imperial/OMLT
-systems2atoms @ git+https://github.com/LLNL/systems2atoms
-hyperplanetree @ git+https://git@github.com/LLNL/systems2atoms#subdirectory=systems2atoms/hyperplanetree
+# feature/sparse-regularization adds leaf_regularization={ridge,lasso,elasticnet}
+# to HyperplaneTreeRegressor (required by EN_train_surrogates.py)
+systems2atoms @ git+https://github.com/SunoySanyal/systems2atoms.git@feature/sparse-regularization
+hyperplanetree @ git+https://github.com/SunoySanyal/systems2atoms.git@feature/sparse-regularization#subdirectory=systems2atoms/hyperplanetree
 tensorflow
