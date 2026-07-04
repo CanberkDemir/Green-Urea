@@ -85,9 +85,13 @@ K_CAPITAL = (1.0 - (0.68 / NPW_N) * ANNUITY - 0.32 * DISCOUNT_N) / ((1.0 - NPW_P
 UREA_MARKET_GBP_PER_KG = 1.83
 CO2_CERT_MARKET_GBP_PER_T = 41.84
 GRID_KGCO2_PER_KWH = 0.177
-WIND_KGCO2_PER_KWH = 0.013
+# Headline gate-to-gate accounting: dedicated wind is carbon-neutral at the
+# point of use (turbine-embodied emissions lie upstream of the gate).
+# Sensitivity: UNECE life-cycle intensity for offshore wind.
+WIND_KGCO2_PER_KWH_OPERATIONAL = 0.0
+WIND_KGCO2_PER_KWH_LIFECYCLE = 0.013
 CO2_IN_UREA_KG_PER_KG = 44.0 / 60.0
-CONVENTIONAL_REFS = [("SMR Haber-Bosch (NH$_3$)", 2.2), ("Bosch-Meiser (urea)", 1.83)]
+CONVENTIONAL_REFS = [("SMR Haber-Bosch\n(NH$_3$)", 2.2), ("Bosch-Meiser\n(urea)", 1.83)]
 
 
 def first(df, col):
@@ -143,7 +147,12 @@ def case_summary(name, key, path):
     # total_electric_load already includes ch_B; battery discharge re-enters
     # the supply side, so wind use = load - grid - dis_B.
     wind_kwh = max(0.0, load - df["dis_B"].sum() - grid_kwh)
-    emissions = (grid_kwh * GRID_KGCO2_PER_KWH + wind_kwh * WIND_KGCO2_PER_KWH) / df["F_U"].sum() \
+    urea_kg = df["F_U"].sum()
+    emissions_op = (grid_kwh * GRID_KGCO2_PER_KWH
+                    + wind_kwh * WIND_KGCO2_PER_KWH_OPERATIONAL) / urea_kg \
+        - CO2_IN_UREA_KG_PER_KG
+    emissions_lc = (grid_kwh * GRID_KGCO2_PER_KWH
+                    + wind_kwh * WIND_KGCO2_PER_KWH_LIFECYCLE) / urea_kg \
         - CO2_IN_UREA_KG_PER_KG
 
     wind_avail = (df["cf_wind"] * first(df, "W_cap")).sum()
@@ -179,7 +188,8 @@ def case_summary(name, key, path):
         "bep_gbp_per_kg": bep,
         "bep_cert_gbp_per_t": bep_cert,
         "npw_market_gbp": npw,
-        "emissions_kgco2_per_kg": emissions,
+        "emissions_kgco2_per_kg": emissions_op,
+        "emissions_lifecycle_kgco2_per_kg": emissions_lc,
     }
 
 
@@ -271,8 +281,8 @@ def fig_storage_capacities(summaries, out_path):
 COMPONENT_POINTS = {
     "Wind": 0.06, "Electrolyzer": 0.16, "Battery": 0.26, "H2 storage": 0.36,
     "CO2 storage": 0.46, "NH3 storage": 0.56, "Heat exchanger": 0.66,
-    "NH3 plant": 0.76, "Urea plant": 0.86, "Grid electricity": 0.96,
-    "CO2 feed": 0.50, "O2 credit": 0.92,
+    "NH3 plant": 0.42, "Urea plant": 0.90, "Grid electricity": 0.98,
+    "CO2 feed": 0.50, "O2 credit": 0.76,
 }
 
 
@@ -322,6 +332,40 @@ def fig_annualized_cost_allocation(summaries, out_path):
     plt.close(fig)
 
 
+def fig_emissions(summaries, out_path):
+    """Grouped bars: operational gate-to-gate vs life-cycle-electricity
+    sensitivity per case, plus conventional cradle-to-gate references."""
+    names = [s["name"] for s in summaries]
+    op = [s["emissions_kgco2_per_kg"] for s in summaries]
+    lc = [s["emissions_lifecycle_kgco2_per_kg"] for s in summaries]
+    x = np.arange(len(names))
+    width = 0.38
+    c_op, c_lc, c_ref = VIRIDIS(0.25), VIRIDIS(0.60), VIRIDIS(0.85)
+
+    fig, ax = plt.subplots(figsize=(9.5, 5))
+    b_op = ax.bar(x - width / 2, op, width, color=c_op,
+                  label="Gate-to-gate (dedicated wind zero-rated)")
+    b_lc = ax.bar(x + width / 2, lc, width, color=c_lc,
+                  label="Incl. life-cycle electricity intensities")
+    ref_x = np.arange(len(CONVENTIONAL_REFS)) + len(names) + 0.3
+    b_ref = ax.bar(ref_x, [v for _, v in CONVENTIONAL_REFS], width,
+                   color=c_ref, label="Conventional route (literature)")
+    for bars in (b_op, b_lc, b_ref):
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, h,
+                    f"{h:.2f}", ha="center",
+                    va="bottom" if h >= 0 else "top", fontsize=8.5)
+    ax.axhline(0.0, color="0.25", linewidth=0.9)
+    ax.set_xticks(list(x) + list(ref_x))
+    ax.set_xticklabels(names + [n for n, _ in CONVENTIONAL_REFS], fontsize=9)
+    ax.set_ylabel(r"CO$_2$ emissions (kg$_{\mathrm{CO_2}}$ kg$_{\mathrm{product}}^{-1}$)")
+    ax.legend(frameon=False, fontsize=9, loc="upper left")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight")
+    plt.close(fig)
+
+
 def _simple_bar(values, names, ylabel, out_path, market=None, market_label=None, fmt="{:.2f}"):
     fig = plt.figure(figsize=(8, 5))
     bars = plt.bar(names, values, color=VIRIDIS_015)
@@ -360,11 +404,7 @@ def main():
                 OUT_DIR / "bep_cert.pdf",
                 market=CO2_CERT_MARKET_GBP_PER_T,
                 market_label="market price 41.84 GBP/t", fmt="{:,.0f}")
-    emission_names = names + [n for n, _ in CONVENTIONAL_REFS]
-    emission_vals = [s["emissions_kgco2_per_kg"] for s in summaries] + [v for _, v in CONVENTIONAL_REFS]
-    _simple_bar(emission_vals, emission_names,
-                r"CO$_2$ emissions (kg$_{\mathrm{CO_2}}$ kg$_{\mathrm{product}}^{-1}$)",
-                OUT_DIR / "emissions.pdf")
+    fig_emissions(summaries, OUT_DIR / "emissions.pdf")
 
     with (OUT_DIR / "paper_numbers.json").open("w", encoding="utf-8") as f:
         json.dump(summaries, f, indent=2)
@@ -372,7 +412,8 @@ def main():
     cols = ["name", "W_cap_kw", "E_cap_kw", "B_cap_kwh", "H_cap_kg", "NH3_cap_kg",
             "Fh2_op_kgph", "availability_A_pct", "grid_share_pct",
             "annualized_cost_gbp_per_y", "bep_gbp_per_kg", "bep_cert_gbp_per_t",
-            "npw_market_gbp", "emissions_kgco2_per_kg"]
+            "npw_market_gbp", "emissions_kgco2_per_kg",
+            "emissions_lifecycle_kgco2_per_kg"]
     print(pd.DataFrame(summaries)[cols].to_string(index=False))
     print(f"\nk_capital = {K_CAPITAL:.5f} (i={NPW_I}, N={NPW_N}, Phi={NPW_PHI})")
     print(f"Figures written to {OUT_DIR}")

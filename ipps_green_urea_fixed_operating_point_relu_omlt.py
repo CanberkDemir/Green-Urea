@@ -182,7 +182,7 @@ HORIZON_MODE = "random_3day_to_1day"  # "calendar", "random_3day_to_1day"
 RANDOM_DAY_REDUCTION_FACTOR = 10
 RANDOM_DAY_REDUCTION_SEED = 20260415
 SOLVER_NAME = "gurobi"
-TIME_LIMIT_SEC = 10 * 60 
+TIME_LIMIT_SEC = 30 * 60
 
 GRID_MODE = "free_grid"  # "free_grid", "grid_5pct", "grid_10pct", "wind_only"
 ENABLE_OXYGEN_REVENUE = True
@@ -711,7 +711,7 @@ def build_model(
     # (raised from 1500 kW after correcting the electrolyzer power balance,
     # which adds ~400 kW of true electrolyzer load to the system)
     w_cap_ub = 5000.0
-    b_cap_ub = 10000.0
+    b_cap_ub = 20000.0
     h_cap_ub = n_hours * ammonia.model_input_bounds["Fh2_op"][1]
 
     m.W_cap = pyo.Var(bounds=(0.0, w_cap_ub))
@@ -1148,7 +1148,10 @@ def solve_model(model: pyo.ConcreteModel):
 
     if SOLVER_NAME in {"gurobi", "gurobi_direct"}:
         solver.options["TimeLimit"] = TIME_LIMIT_SEC
-        solver.options["MIPGap"] = 0.01
+        # Tight gap: near-optimal designs are highly degenerate (wind
+        # overbuild, battery, and chemical storage are near-substitutes),
+        # so a loose gap produces arbitrary, non-comparable designs.
+        solver.options["MIPGap"] = 0.001
         solver.options["MIPFocus"] = 1
         solver.options["NumericFocus"] = 2
         solver.options["Cuts"] = 2
