@@ -898,10 +898,10 @@
     "l2_reg": 0.0,
     "seed": 15
   },
-  "network_graph_png": "D:\\University\\CHBI\\CHBI-491\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\network_graph.png",
-  "surface_plot_png": "D:\\University\\CHBI\\CHBI-491\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\surface_vs_datapoints.png",
-  "parity_plot_png": "D:\\University\\CHBI\\CHBI-491\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\parity_plot.png",
-  "training_loss_png": "D:\\University\\CHBI\\CHBI-491\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\training_loss_curve.png",
+  "network_graph_png": "C:\\Users\\Sunoy\\CHBI491Codes\\GitHubImport\\Green-Urea\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\network_graph.png",
+  "surface_plot_png": "C:\\Users\\Sunoy\\CHBI491Codes\\GitHubImport\\Green-Urea\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\surface_vs_datapoints.pdf",
+  "parity_plot_png": "C:\\Users\\Sunoy\\CHBI491Codes\\GitHubImport\\Green-Urea\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\parity_plot.png",
+  "training_loss_png": "C:\\Users\\Sunoy\\CHBI491Codes\\GitHubImport\\Green-Urea\\surrogate_visualizations\\ureaF_unit\\electric_kwhph\\Fnh3__Fco2\\training_loss_curve.png",
   "surface_data": {
     "x_name": "Fnh3",
     "y_name": "Fco2",

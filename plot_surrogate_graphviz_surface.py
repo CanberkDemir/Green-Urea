@@ -593,8 +593,14 @@ def render_surface_plot(
     ax.tick_params(axis="both", which="major", labelsize=SURFACE_TICK_LABEL_FONTSIZE, pad=4)
     _apply_surface_camera(ax)
     fig.tight_layout()
-    out_path = out_dir / "surface_vs_datapoints.png"
-    fig.savefig(out_path, dpi=300, bbox_inches="tight", **_savefig_kwargs())
+    out_path = out_dir / "surface_vs_datapoints.pdf"
+    fig.savefig(out_path, bbox_inches="tight", **_savefig_kwargs())
+    fig.savefig(
+        out_dir / "surface_vs_datapoints.png",
+        dpi=300,
+        bbox_inches="tight",
+        **_savefig_kwargs(),
+    )
     if interactive:
         plt.show(block=True)
     plt.close(fig)

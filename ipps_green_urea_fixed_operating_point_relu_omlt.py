@@ -194,7 +194,7 @@ USE_MANUAL_WARMSTART = True
 
 CRF = 0.05
 c_B = 104.0  # GBP per kWh battery capacity
-c_wind = 864_545.45
+c_wind = 864.54545  # GBP per kW wind capacity (Hornsea 2: GBP 864,545.45 per MW)
 c_el = 4_130.4  # GBP per kWh electrolyzer capacity (applied to E_cap_incremental)
 c_H = 645.89  # GBP per kg-H2 hydrogen storage
 c_C = 0.42  # GBP per kg-LCO2 liquid CO2 storage
@@ -210,6 +210,7 @@ c_H2O_el = 0.00  # GBP per kg-H2O electrolyzer make-up water (placeholder)
 c_Ft_feed = 0.00
 c_O2_sale = 0.03
 eta_el = 0.98
+e_spec_el = 50.0  # kWh electricity per kg H2 (electrolyzer specific energy demand)
 eta_eheater = 1.0
 eta_H_ch = 0.98
 eta_H_dis = 0.98
@@ -707,7 +708,9 @@ def build_model(
     ammonia_discharge_flow_ub = urea.model_input_bounds["Fnh3_op"][1]
 
     # These 3 need engineering caps or a conservative design envelope
-    w_cap_ub = 1500.0
+    # (raised from 1500 kW after correcting the electrolyzer power balance,
+    # which adds ~400 kW of true electrolyzer load to the system)
+    w_cap_ub = 5000.0
     b_cap_ub = 10000.0
     h_cap_ub = n_hours * ammonia.model_input_bounds["Fh2_op"][1]
 
@@ -841,7 +844,7 @@ def build_model(
     # Keep E_cap as a design variable so warm starts can seed it directly,
     # then tie it to the ammonia design H2 load with an equality constraint.
     m.electrolyzer_design_capacity_basis = pyo.Constraint(
-        expr=m.E_cap == m.Fh2_op*50 / eta_el,
+        expr=m.E_cap == m.Fh2_op * e_spec_el / eta_el,
     )
     m.electrolyzer_included_capex_basis = pyo.Constraint(
         expr=m.E_cap_included_in_nh3 == m.F_NH3_A_op / eta_el,
@@ -984,7 +987,7 @@ def build_model(
     )
     m.hydrogen_production = pyo.Constraint(
         m.T,
-        rule=lambda mdl, t: mdl.M_H2_prod[t] == eta_el * mdl.P_el[t],
+        rule=lambda mdl, t: mdl.M_H2_prod[t] == eta_el * mdl.P_el[t] / e_spec_el,
     )
     m.electricity_balance = pyo.Constraint(
         m.T,

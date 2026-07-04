@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -85,7 +85,7 @@ ENERGY_CASES = ("Grid only", "Wind only")
 
 CRF = 0.05
 COST_RATES = {
-    "Wind": 864_545.45,
+    "Wind": 864.54545,  # GBP per kW (Hornsea 2: GBP 864,545 per MW)
     "Electrolyzer": 4_130.4,
     "Battery": 104.0,
     "H2 storage": 645.89,
@@ -753,19 +753,19 @@ def main():
 
     cost_path = draw_capital_stacked_bar(
         cost_data,
-        "capital_cost_distribution_stacked_bars.png",
+        "capital_cost_distribution_stacked_bars.pdf",
     )
     total_npw_path = draw_total_npw_stacked_bar(
         total_npw_data,
-        "total_npw_cost_allocation_bars.png",
+        "total_npw_cost_allocation_bars.pdf",
     )
     energy_path = draw_pie_grid(
         energy_data,
-        "major_energy_consumption_slices.png",
+        "major_energy_consumption_slices.pdf",
     )
     detailed_energy_path = draw_wind_only_detailed_energy(
         wind_only_df,
-        "wind_only_detailed_energy_duty_breakdown.png",
+        "wind_only_detailed_energy_duty_breakdown.pdf",
     )
 
     print(f"Wrote {cost_path}")
@@ -776,3 +776,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

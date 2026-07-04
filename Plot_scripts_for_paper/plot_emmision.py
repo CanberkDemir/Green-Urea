@@ -1,34 +1,14 @@
-import matplotlib.pyplot as plt
+"""Gate-to-gate emissions bar chart (PDF). Superseded by
+make_all_paper_figures.py; kept as a convenience entry point."""
+from make_all_paper_figures import CASES, CONVENTIONAL_REFS, OUT_DIR, _simple_bar, case_summary
 
-VIRIDIS_015 = "#463480"
-
-cases = ["Grid only", "10% Grid", "5% Grid", "Wind only", "Steam Cracking", "Bosch-Meiser"]
-emmisions = [15.05, -0.21, -0.74, -1.27, 2.2, 1.83]
-
-plt.figure(figsize=(8, 5))
-
-bars = plt.bar(cases, emmisions, color=VIRIDIS_015)
-
-plt.ylabel(r"$\mathrm{CO_2\ Emissions\ (kg_{CO_2}\,kg_{compound}^{-1})}$")
-
-# Add value labels
-for bar in bars:
-    height = bar.get_height()
-    
-    if height >= 0:
-        y = height + 0.0     # slightly above bar
-        va = 'bottom'
-    else:
-        y = height - 0.0     # slightly below bar
-        va = 'top'
-    
-    plt.text(
-        bar.get_x() + bar.get_width()/2,
-        y,
-        f"{height:.2f}",
-        ha='center',
-        va=va
-    )
-
-plt.tight_layout()
-plt.show()
+summaries = [case_summary(name, key, path) for name, key, path in CASES]
+names = [s["name"] for s in summaries] + [n for n, _ in CONVENTIONAL_REFS]
+values = [s["emissions_kgco2_per_kg"] for s in summaries] + [v for _, v in CONVENTIONAL_REFS]
+_simple_bar(
+    values,
+    names,
+    r"CO$_2$ emissions (kg$_{\mathrm{CO_2}}$ kg$_{\mathrm{product}}^{-1}$)",
+    OUT_DIR / "emissions.pdf",
+)
+print(f"Wrote {OUT_DIR / 'emissions.pdf'}")
