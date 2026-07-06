@@ -25,22 +25,23 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT_DIR = ROOT / "paper_figures"
+ROOT = Path(__file__).resolve().parents[2]
+OUT_DIR = ROOT / "figures" / "paper_figures"
 OUT_DIR.mkdir(exist_ok=True)
 sys.path.insert(0, str(ROOT))
 
-from plotting_compat import normalize_result_columns  # noqa: E402
+from surrogates.plotting_compat import normalize_result_columns  # noqa: E402
 
 plt.rcParams.update({"font.size": 11})
 VIRIDIS = plt.get_cmap("viridis")
 VIRIDIS_015 = "#463480"
 
+SOLUTIONS_DIR = ROOT / "optimization" / "solutions"
 CASES = [
-    ("Unrestricted grid", "free_grid", ROOT / "ipps_solution_smallhorizon_free_grid.csv"),
-    ("10% grid", "grid_10pct", ROOT / "ipps_solution_smallhorizon_grid_10pct.csv"),
-    ("5% grid", "grid_5pct", ROOT / "ipps_solution_smallhorizon_grid_5pct.csv"),
-    ("Wind only", "wind_only", ROOT / "ipps_solution_smallhorizon_wind_only.csv"),
+    ("Unrestricted grid", "free_grid", SOLUTIONS_DIR / "ipps_solution_smallhorizon_free_grid.csv"),
+    ("10% grid", "grid_10pct", SOLUTIONS_DIR / "ipps_solution_smallhorizon_grid_10pct.csv"),
+    ("5% grid", "grid_5pct", SOLUTIONS_DIR / "ipps_solution_smallhorizon_grid_5pct.csv"),
+    ("Wind only", "wind_only", SOLUTIONS_DIR / "ipps_solution_smallhorizon_wind_only.csv"),
 ]
 
 # ----------------------------------------------------------------- economics

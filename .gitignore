@@ -214,3 +214,6 @@ OtherFiles
 WindEnergy
 ureaV3_1
 .vscode
+
+# Personal scratch notes (not part of the project)
+/personal/

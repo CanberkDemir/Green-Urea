@@ -29,7 +29,7 @@ import surrogate_functions as sf
 
 
 THIS_DIR = Path(__file__).resolve().parent
-DEFAULT_OUT_ROOT = THIS_DIR / "surrogate_visualizations"
+DEFAULT_OUT_ROOT = THIS_DIR / "trained" / "surrogate_visualizations"
 ISOMETRIC_ELEVATION_DEG = 20.
 ISOMETRIC_AZIMUTH_DEG = -45
 SURFACE_CAMERA_ELEVATION_DEG = ISOMETRIC_ELEVATION_DEG

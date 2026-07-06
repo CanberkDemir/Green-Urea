@@ -170,10 +170,11 @@ patch_omlt_linear_tree_bug()
 
 
 THIS_DIR = Path(__file__).resolve().parent
-SURROGATE_FILE = THIS_DIR / "surrogate_functions.py"
-MODEL_DIR = THIS_DIR / "trained_unit_surrogates"
+REPO_ROOT = THIS_DIR.parent
+SURROGATE_FILE = REPO_ROOT / "surrogates" / "surrogate_functions.py"
+MODEL_DIR = REPO_ROOT / "surrogates" / "trained" / "trained_unit_surrogates"
 WIND_CSV = THIS_DIR / "uk_hornsea2_wind_availability_2024.csv"
-RESULTS_CSV = THIS_DIR / "ipps_solution_smallhorizon_free_grid.csv"
+RESULTS_CSV = THIS_DIR / "solutions" / "ipps_solution_smallhorizon_free_grid.csv"
 
 USE_FULL_YEAR = False
 DAYS = 365
@@ -288,8 +289,8 @@ UREAF_DUTY_COLUMNS = (
     "QB28_cond",
     "QR01",
 )
-AMMONIAF_RESULTS_LIVE_CSV = THIS_DIR / "ammoniaF_results_live.csv"
-UREAF_RESULTS_LIVE_CSV = THIS_DIR / "ureaF_results_live.csv"
+AMMONIAF_RESULTS_LIVE_CSV = REPO_ROOT / "aspen" / "data" / "ammoniaF_results_live.csv"
+UREAF_RESULTS_LIVE_CSV = REPO_ROOT / "aspen" / "data" / "ureaF_results_live.csv"
 
 EXPECTED_OUTPUTS = {
     "ammoniaF_unit": ("ammonia_kgph", "water_kgph", "electric_kwhph"),

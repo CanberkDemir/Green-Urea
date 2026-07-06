@@ -21,9 +21,10 @@ from pathlib import Path
 
 import pandas as pd
 
-RIDGE_PLOT_ROOT = Path("trained_unit_surrogates") / "plots_phase"
-EN_PLOT_ROOT = Path("trained_unit_surrogates_en") / "plots_phase"
-OUT_DIR = Path("surrogate_comparison_tables")
+THIS_DIR = Path(__file__).resolve().parent
+RIDGE_PLOT_ROOT = THIS_DIR / "trained" / "trained_unit_surrogates" / "plots_phase"
+EN_PLOT_ROOT = THIS_DIR / "trained" / "trained_unit_surrogates_en" / "plots_phase"
+OUT_DIR = THIS_DIR / "trained" / "surrogate_comparison_tables"
 
 UNITS = ["ammoniaF_unit", "ureaF_unit"]
 

@@ -6,8 +6,10 @@ import pandas as pd
 from matplotlib.patches import Patch
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = Path(__file__).resolve().parent
+SOLUTIONS_DIR = ROOT / "optimization" / "solutions"
+ASPEN_DATA_DIR = ROOT / "aspen" / "data"
 
 # Main manual scale knobs. Leave at 1.0 for the current layout.
 FONT_SCALE = 0.8
@@ -76,10 +78,10 @@ GROUP_LABELS = {
 }
 
 CASES = [
-    ("Grid only", ROOT / "ipps_solution_smallhorizon_free_grid.csv"),
-    ("10% Grid", ROOT / "ipps_solution_smallhorizon_grid_10pct.csv"),
-    ("5% Grid", ROOT / "ipps_solution_smallhorizon_grid_5pct.csv"),
-    ("Wind only", ROOT / "ipps_solution_smallhorizon_wind_only.csv"),
+    ("Grid only", SOLUTIONS_DIR / "ipps_solution_smallhorizon_free_grid.csv"),
+    ("10% Grid", SOLUTIONS_DIR / "ipps_solution_smallhorizon_grid_10pct.csv"),
+    ("5% Grid", SOLUTIONS_DIR / "ipps_solution_smallhorizon_grid_5pct.csv"),
+    ("Wind only", SOLUTIONS_DIR / "ipps_solution_smallhorizon_wind_only.csv"),
 ]
 ENERGY_CASES = ("Grid only", "Wind only")
 
@@ -406,12 +408,12 @@ def draw_wind_only_detailed_energy(wind_df, output_name):
     }
 
     ammonia_row = nearest_training_row(
-        pd.read_csv(ROOT / "ammoniaF_results_live.csv"),
+        pd.read_csv(ASPEN_DATA_DIR / "ammoniaF_results_live.csv"),
         ammonia_target,
         ["Ft", "Fh2"],
     )
     urea_row = nearest_training_row(
-        pd.read_csv(ROOT / "ureaF_results_live.csv"),
+        pd.read_csv(ASPEN_DATA_DIR / "ureaF_results_live.csv"),
         urea_target,
         ["Fnh3", "Fco2"],
     )

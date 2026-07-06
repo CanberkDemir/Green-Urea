@@ -36,7 +36,7 @@ import surrogate_functions as sf
 TARGET_OUTPUT = "electric_kwhph"
 UNIT_NAME = "ureaF_unit"
 
-DEFAULT_OUTPUT_DIR = sf.THIS_DIR / "ureaF_electricity_parameter_search"
+DEFAULT_OUTPUT_DIR = sf.THIS_DIR / "trained" / "ureaF_electricity_parameter_search"
 DEFAULT_LAYER_OPTIONS = ("3,3", "4,3", "5,5,3", "6,3", "8,5", "8,5,3")
 DEFAULT_EPOCHS = (400, 1000, 3000, 10000)
 DEFAULT_LEARNING_RATES = (1e-3, 2e-3, 5e-3)

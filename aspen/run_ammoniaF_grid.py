@@ -23,11 +23,11 @@ from aspen_grid_runner import (
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 SIMULATION_NAME = "ammoniaF"
-SIMULATION_FILE = "ammoniaF.bkp"
-INPUTS_CSV = SCRIPT_DIR / "ammoniaF_inputs.csv"
-OUTPUTS_CSV = SCRIPT_DIR / "ammoniaF_outputs.csv"
-CASE_GRID_CSV = SCRIPT_DIR / "ammoniaF_case_grid.csv"
-RESULTS_CSV = SCRIPT_DIR / "ammoniaF_results_live.csv"
+SIMULATION_FILE = str(SCRIPT_DIR / "ammoniaF.bkp")
+INPUTS_CSV = SCRIPT_DIR / "data" / "ammoniaF_inputs.csv"
+OUTPUTS_CSV = SCRIPT_DIR / "data" / "ammoniaF_outputs.csv"
+CASE_GRID_CSV = SCRIPT_DIR / "data" / "ammoniaF_case_grid.csv"
+RESULTS_CSV = SCRIPT_DIR / "data" / "ammoniaF_results_live.csv"
 
 # Aspen stores NO3-IN on a MASS-FRAC basis, and direct writes to TOTFLOW
 # trigger underspecification there. Use the total-flow input as a case-grid

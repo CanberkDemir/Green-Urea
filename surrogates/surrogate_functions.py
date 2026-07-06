@@ -40,16 +40,18 @@ except Exception:
 # =============================================================================
 
 THIS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = THIS_DIR.parent
+ASPEN_DATA_DIR = REPO_ROOT / "aspen" / "data"
 
-DEFAULT_MODEL_DIR = THIS_DIR / "trained_unit_surrogates"
+DEFAULT_MODEL_DIR = THIS_DIR / "trained" / "trained_unit_surrogates"
 DEFAULT_MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
-AMMONIAF_RESULTS_CSV = THIS_DIR / "ammoniaF_results_live.csv"
-AMMONIAF_CASE_GRID_CSV = THIS_DIR / "ammoniaF_case_grid.csv"
-AMMONIAF_INPUTS_CSV = THIS_DIR / "ammoniaF_inputs.csv"
+AMMONIAF_RESULTS_CSV = ASPEN_DATA_DIR / "ammoniaF_results_live.csv"
+AMMONIAF_CASE_GRID_CSV = ASPEN_DATA_DIR / "ammoniaF_case_grid.csv"
+AMMONIAF_INPUTS_CSV = ASPEN_DATA_DIR / "ammoniaF_inputs.csv"
 
-UREAF_RESULTS_CSV = THIS_DIR / "ureaF_results_live.csv"
-UREAF_INPUTS_CSV = THIS_DIR / "ureaF_inputs.csv"
+UREAF_RESULTS_CSV = ASPEN_DATA_DIR / "ureaF_results_live.csv"
+UREAF_INPUTS_CSV = ASPEN_DATA_DIR / "ureaF_inputs.csv"
 UREAF_TRAIN_ALL_HEAT_DUTIES = True
 
 SHOW_INTERACTIVE_3D_PLOTS = False

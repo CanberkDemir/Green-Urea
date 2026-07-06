@@ -56,13 +56,17 @@ from systems2atoms.hyperplanetree import LinearTreeRegressor, plot_surrogate_2d
 # CONFIG
 # =============================================================================
 
-DEFAULT_MODEL_DIR = Path("trained_unit_surrogates")
-DEFAULT_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-DEFAULT_GALLERY_OUT_DIR = Path("surrogate_visualizations_ht")
+THIS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = THIS_DIR.parent
+ASPEN_DATA_DIR = REPO_ROOT / "aspen" / "data"
 
-AMMONIAF_RESULTS_CSV = Path("ammoniaF_results_live.csv")
-AMMONIAF_CASE_GRID_CSV = Path("ammoniaF_case_grid.csv")
-AMMONIAF_INPUTS_CSV = Path("ammoniaF_inputs.csv")
+DEFAULT_MODEL_DIR = THIS_DIR / "trained" / "trained_unit_surrogates"
+DEFAULT_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_GALLERY_OUT_DIR = THIS_DIR / "trained" / "surrogate_visualizations_ht"
+
+AMMONIAF_RESULTS_CSV = ASPEN_DATA_DIR / "ammoniaF_results_live.csv"
+AMMONIAF_CASE_GRID_CSV = ASPEN_DATA_DIR / "ammoniaF_case_grid.csv"
+AMMONIAF_INPUTS_CSV = ASPEN_DATA_DIR / "ammoniaF_inputs.csv"
 SHOW_INTERACTIVE_3D_PLOTS = False
 ISOMETRIC_ELEVATION_DEG = 35.264389682754654
 ISOMETRIC_AZIMUTH_DEG = -135
@@ -85,7 +89,7 @@ HT_DEFAULT_HYPERPARAMETERS = {
 HT_MIN_SAMPLES_LEAF_SEARCH = np.logspace(-6, -1, 11).tolist()
 HT_MAX_WEIGHT_SEARCH = [3]
 
-UREAF_RESULTS_CSV = Path("ureaF_results_live.csv")
+UREAF_RESULTS_CSV = ASPEN_DATA_DIR / "ureaF_results_live.csv"
 UREAF_TRAIN_ALL_HEAT_DUTIES = True
 
 AMMONIAF_RESULT_META_COLUMNS = {

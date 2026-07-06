@@ -23,11 +23,11 @@ from aspen_grid_runner import (
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 SIMULATION_NAME = "ureaF"
-SIMULATION_FILE = "ureaF.bkp"
-INPUTS_CSV = SCRIPT_DIR / "ureaF_inputs.csv"
-OUTPUTS_CSV = SCRIPT_DIR / "ureaF_outputs.csv"
-CASE_GRID_CSV = SCRIPT_DIR / "ureaF_case_grid.csv"
-RESULTS_CSV = SCRIPT_DIR / "ureaF_results_live.csv"
+SIMULATION_FILE = str(SCRIPT_DIR / "ureaF.bkp")
+INPUTS_CSV = SCRIPT_DIR / "data" / "ureaF_inputs.csv"
+OUTPUTS_CSV = SCRIPT_DIR / "data" / "ureaF_outputs.csv"
+CASE_GRID_CSV = SCRIPT_DIR / "data" / "ureaF_case_grid.csv"
+RESULTS_CSV = SCRIPT_DIR / "data" / "ureaF_results_live.csv"
 NH3FEED_TOTAL_FLOW_DRIVER = "Fnh3"
 NH3FEED_TOTAL_FLOW_PATH = r"\Data\Streams\NH3-IN\Input\TOTFLOW\MIXED"
 UREA_OUT_TOTAL_MASS_FLOW_NAME = "Ft_UREA-OUT"

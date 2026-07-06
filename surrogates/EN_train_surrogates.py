@@ -30,8 +30,9 @@ import HT_train_surrogates as ht
 # CONFIG — only the regularization differs from the ridge HT run
 # =============================================================================
 
-EN_MODEL_DIR = Path("trained_unit_surrogates_en")
-EN_GALLERY_OUT_DIR = Path("surrogate_visualizations_en")
+THIS_DIR = Path(__file__).resolve().parent
+EN_MODEL_DIR = THIS_DIR / "trained" / "trained_unit_surrogates_en"
+EN_GALLERY_OUT_DIR = THIS_DIR / "trained" / "surrogate_visualizations_en"
 
 EN_LEAF_L1_RATIO = 0.5
 # leaf_alpha=None makes the library fall back to the `ridge` value (1e-5)
