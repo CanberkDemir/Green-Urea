@@ -223,7 +223,8 @@ def _urea_rxn_config(props):
 
 
 # --------------------------------------------------------------- build
-def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0):
+def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0,
+                boilup=0.15):
     m = ConcreteModel()
     fs = m.fs = FlowsheetBlock(dynamic=False)
     fs.props = GenericParameterBlock(**get_prop(("Vap", "Liq")))
@@ -286,10 +287,21 @@ def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0):
     # a zero-flow branch cannot be initialized; 1e-4 is a negligible trickle
     fs.cond_split.split_fraction[0, "to_def"].fix(
         min(max(direct_frac, 1e-4), 0.99))
-    _valve(fs, "v_cond_def", 1.0 * BAR)
+    # condensate NH3 stripper (4 bar, reboiled flash): boils off a fixed
+    # fraction of the DEF-bound condensate; the NH3-rich vapour joins the
+    # LP carbamate condenser, the stripped water goes to DEF dilution
+    fs.nh3s = Flash(property_package=fs.props, has_pressure_change=True)
+    fs.nh3s.deltaP.fix(0.0)
+    fs.boilup = boilup
+    st_s = fs.nh3s.control_volume.properties_out[0]
+    fs.nh3s_vf = Constraint(
+        expr=fs.nh3s.vap_outlet.flow_mol[0]
+        == boilup * fs.nh3s.inlet.flow_mol[0])
+    # stripped water: cooled and let down to the DEF mixer
+    _heater(fs, "v_cond_def", T_DEF, 1.0 * BAR)
 
     # LP carbamate condenser
-    _mixer(fs, "m_lpc", ["vap", "cond"], P_LP)
+    _mixer(fs, "m_lpc", ["vap", "cond", "strip"], P_LP)
     _carb_condenser(fs, "lpc", T_LPC, P_LP)
     _flash(fs, "f_lpc", T=T_LPC)
     _pump(fs, "lp_pump", P_MP)
@@ -338,7 +350,9 @@ def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0):
     arc("s_vacv", fs.vac_cond.vap_outlet, fs.vent_vac.inlet)
     arc("s_vacl", fs.vac_cond.liq_outlet, fs.cond_pump.inlet)
     arc("s_cnd", fs.cond_pump.outlet, fs.cond_split.inlet)
-    arc("s_cdef1", fs.cond_split.to_def, fs.v_cond_def.inlet)
+    arc("s_ns_in", fs.cond_split.to_def, fs.nh3s.inlet)
+    arc("s_ns_v", fs.nh3s.vap_outlet, fs.m_lpc.strip)
+    arc("s_cdef1", fs.nh3s.liq_outlet, fs.v_cond_def.inlet)
     arc("s_cdef2", fs.v_cond_def.outlet, fs.m_def.cond)
     arc("s_clp", fs.cond_split.to_lp, fs.m_lpc.cond)
     arc("s_lpv", fs.f_lp.vap_outlet, fs.m_lpc.vap)
@@ -453,11 +467,19 @@ def initialize(m, passes=12):
         init(fs.vac_cond, fs.s_strv)
         init(fs.cond_pump, fs.s_vacl)
         init(fs.cond_split, fs.s_cnd)
+        # NH3 stripper: initialize at an estimated duty, spec released later
+        _prop(fs.s_ns_in)
+        fin = value(fs.nh3s.inlet.flow_mol[0])
+        fs.nh3s_vf.deactivate()
+        fs.nh3s.heat_duty.fix(fin * (75.4 * 105.0 + fs.boilup * 40.0e3))
+        init(fs.nh3s)
+        fs.nh3s.heat_duty.unfix()
+        fs.nh3s_vf.activate()
         init(fs.v_cond_def, fs.s_cdef1)
         init(fs.def_cool, fs.s_strl)
         init(fs.m_def, fs.s_defa, fs.s_wat, fs.s_cdef2)
         init(fs.def_trim, fs.s_defb)
-        init(fs.m_lpc, fs.s_lpv, fs.s_clp)
+        init(fs.m_lpc, fs.s_lpv, fs.s_clp, fs.s_ns_v)
         init(fs.lpc, fs.s_lpc1)
         init(fs.f_lpc, fs.s_lpc2)
         init(fs.lp_pump, fs.s_lpcl)
@@ -559,6 +581,7 @@ def report(m):
         "MP decomposer (160 C)": kw(fs.f_mp.heat_duty[0]),
         "LP decomposer (135 C)": kw(fs.f_lp.heat_duty[0]),
         "reactor": kw(fs.reactor.heat_duty[0]),
+        "condensate NH3 stripper (4 bar)": kw(fs.nh3s.heat_duty[0]),
         "stripping steam (latent+sensible vs 25 C liquid)":
             value(fs.steam_feed.outlet.flow_mol[0]) * (
                 75.4 * (373.15 - 298.15) + 40.7e3
@@ -571,6 +594,7 @@ def report(m):
         "MP carbamate condenser": kw(fs.mpc.heat_duty[0]),
         "NH3 condenser": kw(fs.nh3_cond.heat_duty[0])
         + kw(fs.f_mpc.heat_duty[0]),
+        "stripped-condensate cooler": kw(fs.v_cond_def.heat_duty[0]),
         "DEF cooler": kw(fs.def_cool.heat_duty[0])
         + kw(fs.def_trim.heat_duty[0]),
     }
@@ -605,9 +629,11 @@ def main():
     ap.add_argument("--direct", type=float, default=0.0,
                     help="fraction of stripper condensate sent straight to "
                          "DEF dilution instead of the HP loop")
+    ap.add_argument("--boilup", type=float, default=0.15,
+                    help="condensate NH3 stripper vapour/feed molar ratio")
     a = ap.parse_args()
     m = build_model(fco2_kgph=a.co2, steam_kgph=a.steam,
-                    direct_frac=a.direct)
+                    direct_frac=a.direct, boilup=a.boilup)
     s = initialize(m)
     solve(m, s)
     report(m)
