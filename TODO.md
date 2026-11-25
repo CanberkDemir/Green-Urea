@@ -209,6 +209,16 @@ Every item has the same fields:
   - At 90% direct: 651 ppm NH3 (ISO limit 2000) and heating 53 → 34 kW.
   - These numbers predate Canberk's carbamate changes. Re-run to refresh them.
 
+### D6 `[WIP]` DEF flowsheet does not converge on Windows / IPOPT 3.13.2 since commit 5fc8a93
+- **What:** after the carbamate-loop changes (10% carbamate retention, MP/LP decomposers, `passes=1`, 0.8/0.2 damped tear), `def_lowp_flowsheet.py` fails at "closed loop (fixed X): infeasible" for `--direct` 0, 0.5 and 0.9 on this machine. The README reports it solving on Canberk's platform (Linux, IPOPT 3.14).
+- **Why it matters:** blocks refreshing D2's numbers and any DEF-based plant totals.
+- **Where:** `def_lowp_flowsheet.py` (`initialize`, `solve`).
+- **Notes:**
+  - Diagnosed 2026-11-25. With `passes=9`, tear passes 1–5 converge smoothly: recycle water creeps 0.389 → 0.470 mol/s, slowed by the 0.2 damping. On pass 6 a unit initialization fails silently and returns garbage (CARB 5.9 mol/s), after which the tear diverges (318 mol/s at pass 8).
+  - `passes=4` reaches the closed-loop solve but IPOPT reports locally infeasible.
+  - The pre-5fc8a93 version (e55ae7c) solved here.
+  - Suggested fix: guard every `init()` result (reject and keep the previous state if a unit returns non-optimal), and use less damping or a Wegstein tear.
+  - Left for Canberk, since it is their latest change. Not fixed here.
 ### D3 `[TODO]` Validate the reactor conversion correlation
 - **What:** X = 0.64 + 0.05(N/C − 4) − 0.09(H/C − 0.5) is a trend assumption. The patent gives no conversion. The 10% carbamate retention is also assumed.
 - **Why it matters:** recycle size, energy and the benefit of D2 all scale with it.
