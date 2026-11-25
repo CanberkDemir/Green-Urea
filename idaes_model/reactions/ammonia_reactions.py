@@ -135,10 +135,46 @@ _NETWORK = {
 }
 
 
-def get_rxn(property_package):
+# Alternative network as written in the manuscript SI (Table S7): the side
+# reactions act on the OTHER ion (r3: NO3- -> N2 with k = 8.2e3,
+# r4: NO2- -> N2 with k = 2.0e2). Gives ~90% NH3 selectivity - the value
+# the paper claims - but see docs/references.md: such selectivity is not
+# supported for Pd-Cu (an N2-selective drinking-water catalyst); it is
+# representative of Ru-type catalysts. Selected with NETWORK = "si".
+_NETWORK_SI = {
+    "MAIN1": _NETWORK["MAIN1"],
+    "MAIN2": _NETWORK["MAIN2"],
+    "SIDE1": (
+        8.2e3, 11970.0, "NO3-", 2,
+        {
+            ("Liq", "NO3-"): -1,
+            ("Liq", "H2"): -3,
+            ("Liq", "N2"): 0.5,
+            ("Liq", "H2O"): 3,
+        },
+    ),
+    "SIDE2": (
+        2.0e2, 8370.0, "NO2-", 2,
+        {
+            ("Liq", "NO2-"): -1,
+            ("Liq", "H2"): -2,
+            ("Liq", "N2"): 0.5,
+            ("Liq", "H2O"): 2,
+        },
+    ),
+}
+
+# "bkp": verbatim Aspen file (default, what the paper's results used)
+# "si":  manuscript SI Table S7 network (~90% NH3 selectivity)
+NETWORK = "bkp"
+
+
+def get_rxn(property_package, network=None):
     """Return a GenericReactionParameterBlock configuration dict."""
+    network = network or NETWORK
+    table = {"bkp": _NETWORK, "si": _NETWORK_SI}[network]
     rate_reactions = {}
-    for name, (k0, ea_cal, ion, ion_per_extent, stoich) in _NETWORK.items():
+    for name, (k0, ea_cal, ion, ion_per_extent, stoich) in table.items():
         # per-ion normalisation: rate constant scaled by the ion moles
         # consumed per Aspen extent, T-EXP=1 folded in at T_OPERATING
         k_eff = k0 * ion_per_extent * T_OPERATING
