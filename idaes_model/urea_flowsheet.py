@@ -392,6 +392,122 @@ def _build_b25_single_stage(fs):
     }
 
 
+B25_NSTAGE = 10  # .bkp NSTAGE; S5 ON-STAGE 1, STRIPH2O 10, no condenser
+
+
+def _build_b25_trays(fs):
+    """B25 as the .bkp RadFrac: 10 equilibrium stages at 5 bar, no
+    condenser, S5 onto stage 1, live steam STRIPH2O into stage 10, S16 =
+    stage-1 vapor, UREA-OUT = stage-10 liquid, reboiler QN = 50,000 kJ/h
+    on stage 10 (the single column spec - imposed, not reported).
+
+    Each stage is Mixer (P fixed) + Flash (Q = 0, dP = 0; stage 10 Q =
+    QN): full MESH equations stage by stage. Built inside a nested
+    flowsheet ``fs.b25col`` so it can be initialized and solved on its
+    own; the stripper bottoms temperature is now an OUTPUT, so the
+    single-stage T_B25_BOT calibration knob disappears."""
+    col = fs.b25col = FlowsheetBlock(dynamic=False)
+    n = B25_NSTAGE
+    col.stages = list(range(1, n + 1))
+    for k in col.stages:
+        inlets = ["feed" if k == 1 else "liq",
+                  "steam" if k == n else "vap"]
+        mix = Mixer(property_package=fs.props, inlet_list=inlets,
+                    momentum_mixing_type=MomentumMixingType.none)
+        setattr(col, f"mix{k}", mix)
+        mix.mixed_state[0].pressure.fix(P_B25)
+        fl = Flash(property_package=fs.props, has_pressure_change=True)
+        setattr(col, f"tray{k}", fl)
+        fl.deltaP.fix(0.0)
+        fl.heat_duty.fix(B25_QN if k == n else 0.0)
+        setattr(col, f"a_mt{k}", Arc(source=mix.outlet, destination=fl.inlet))
+    for k in col.stages:
+        fl = getattr(col, f"tray{k}")
+        if k < n:
+            setattr(col, f"a_liq{k}",
+                    Arc(source=fl.liq_outlet,
+                        destination=getattr(col, f"mix{k + 1}").liq))
+        if k > 1:
+            setattr(col, f"a_vap{k}",
+                    Arc(source=fl.vap_outlet,
+                        destination=getattr(col, f"mix{k - 1}").vap))
+    return {
+        "s5_in": col.mix1.feed,
+        "steam_in": getattr(col, f"mix{n}").steam,
+        "s16_out": col.tray1.vap_outlet,
+        "urea_out": getattr(col, f"tray{n}").liq_outlet,
+    }
+
+
+def _solve_fixed_inlets(blk, ports, solver):
+    """Solve ``blk`` with the given inlet ports temporarily fixed."""
+    fixed = []
+    for p in ports:
+        for v in p.vars.values():
+            for idx in v:
+                if not v[idx].fixed:
+                    v[idx].fix()
+                    fixed.append(v[idx])
+    try:
+        res = solver.solve(blk)
+    finally:
+        for v in fixed:
+            v.unfix()
+    return str(res.solver.termination_condition)
+
+
+def _init_b25_trays(fs, solver, passes=4):
+    """Stage-by-stage initialization of the tray stripper, then a
+    simultaneous solve of the column with its two feeds fixed.
+
+    Pass 1 seeds every up-flowing vapor with a share of the live steam;
+    each pass then sweeps the liquid down and hands the new stage vapors
+    up (a classical Thiele-Geddes-style relaxation)."""
+    col = fs.b25col
+    n = B25_NSTAGE
+    steam = col.find_component(f"mix{n}").steam
+    st_flow = value(steam.flow_mol[0])
+    for k in col.stages[:-1]:
+        vap = getattr(col, f"mix{k}").vap
+        vap.flow_mol[0].set_value(0.5 * st_flow)
+        for c in COMPS:
+            vap.mole_frac_comp[0, c].set_value(
+                1.0 - 4 * EPS if c == "H2O" else EPS)
+        vap.temperature[0].set_value(T_STEAM - 5.0)
+        vap.pressure[0].set_value(P_B25)
+
+    def unit_init(unit, inlet_ports):
+        try:
+            unit.initialize(outlvl=50, optarg=_OPTARG)
+        except Exception:
+            tc = _solve_fixed_inlets(unit, inlet_ports, solver)
+            if tc != "optimal":
+                raise RuntimeError(f"{unit.name}: init failed ({tc})")
+
+    for _ in range(passes):
+        for k in col.stages:
+            mix = getattr(col, f"mix{k}")
+            fl = getattr(col, f"tray{k}")
+            if k > 1:
+                _prop(getattr(col, f"a_liq{k - 1}"))
+            unit_init(mix, [p for p in (getattr(mix, nm, None) for nm in
+                                         ("feed", "liq", "vap", "steam"))
+                            if p is not None])
+            _prop(getattr(col, f"a_mt{k}"))
+            unit_init(fl, [fl.inlet])
+        for k in col.stages[1:]:
+            _prop(getattr(col, f"a_vap{k}"))
+
+    tc = _solve_fixed_inlets(col, [col.mix1.feed, steam], solver)
+    if tc != "optimal":
+        tc = _solve_fixed_inlets(col, [col.mix1.feed, steam], solver)
+    if tc != "optimal":
+        # early tear passes feed the column near-zero S5 guesses; the
+        # stage-wise sweep values are still a usable start, so carry on
+        # and let later passes / the flowsheet solve settle it
+        print(f"  B25 tray column not converged this pass ({tc})")
+
+
 def _build_b28_single_stage(fs):
     """B28 (DISTL shortcut, 5 stages, RR = 1, 1 bar, D:F = 0.8) as a
     mole-balance splitter: the distillate (S30, the water/NH3 overhead)
@@ -437,6 +553,12 @@ COLUMN_IMPLS = {
     "single_stage": {
         "b7": _build_b7_single_stage,
         "b25": _build_b25_single_stage,
+        "b28": _build_b28_single_stage,
+    },
+    # rigorous 10-stage B25 stripper (MESH per stage); B7/B28 unchanged
+    "trays_b25": {
+        "b7": _build_b7_single_stage,
+        "b25": _build_b25_trays,
         "b28": _build_b28_single_stage,
     },
     # future: "tray" (TrayColumn) and "reactive" (B7 with the .bkp's
@@ -963,8 +1085,13 @@ def initialize(m, passes=9, tee=False):
         fwd(fs.b24, fs.a43a, fs.a47a)
         fwd(fs.b20h, fs.a48a)
         fwd(fs.p1, fs.a50a)
-        fwd(fs.b25_mix, fs.a51a, fs.a52a)
-        fwd(fs.b25, fs.a_b25)
+        if hasattr(fs, "b25col"):
+            _prop(fs.a51a)
+            _prop(fs.a52a)
+            _init_b25_trays(fs, solver)
+        else:
+            fwd(fs.b25_mix, fs.a51a, fs.a52a)
+            fwd(fs.b25, fs.a_b25)
         fwd(fs.b23, fs.a53a)
         fwd(fs.b14, fs.a42a, fs.a49a, fs.a54a)
         fwd(fs.b26, fs.a55a)

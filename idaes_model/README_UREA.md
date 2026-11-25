@@ -160,3 +160,28 @@ Findings while chasing the Wurea -48% gap:
   recycle compositions) are unavailable; the grid CSV records only
   DEF-OUT and duties. A stream table from Aspen at Fnh3=10/Fco2=15 would
   pinpoint which recycle carries the discrepancy.
+
+### Rigorous B25 (`column_impl="trays_b25"`, experimental, does not converge yet)
+
+A 10-stage MESH stripper per the .bkp (NSTAGE=10, no condenser, S5 on
+stage 1, STRIPH2O to stage 10, 5 bar, QN = 50,000 kJ/h on stage 10) is
+registered in `COLUMN_IMPLS`. It builds and initializes stage by stage,
+but the flowsheet does not converge with it, and the reason is physical:
+
+* Aspen's recorded QB25_reb is +13.89 kW in every one of 3,241 runs, so
+  heat really is *added*. Yet Aspen's B28 duties imply UREA-OUT is
+  ~51 kg/h of mostly water, i.e. most of the 60 kg/h stripping steam
+  leaves through the bottoms. Condensing that much steam needs ~29 kW
+  *removed*; a heated stripper cannot do it.
+* In the rigorous column the steam therefore goes overhead (S16 -> B23 ->
+  B14 -> 95% REC3) back into the synthesis loop. Water then builds up in
+  the recycle: REC3 grows from 0.85 to 7.7 mol/s over the tear passes and
+  the simultaneous solve is infeasible even at QN = 0.
+* The single-stage surrogate only matched DEF-OUT mass because fixing its
+  temperature at 427.15 K implicitly removed that heat.
+
+So the Aspen water balance around B25/REC3 cannot be reproduced by a
+column that honours the .bkp duty with this thermodynamics. An Aspen
+stream table (S5, S16, UREA-OUT, REC3) at the base case is needed to see
+how Aspen closes it (its SR-POLAR urea/water VLE, a different feed-stage
+convention, or a non-physical converged recycle).
