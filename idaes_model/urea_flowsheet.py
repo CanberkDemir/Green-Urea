@@ -89,7 +89,7 @@ from pyomo.environ import (
     value,
     Var,
 )
-from pyomo.network import Arc
+from pyomo.network import Arc, Port
 
 from idaes.core import FlowsheetBlock
 from idaes.core.solvers import get_solver
@@ -795,7 +795,41 @@ def initialize(m, passes=9, tee=False):
             ext.unfix()
             con.activate()
         else:
-            unit.initialize(outlvl=50, optarg=_OPTARG)
+            try:
+                unit.initialize(outlvl=50, optarg=_OPTARG)
+            except Exception:
+                _direct_unit_solve(unit)
+
+    def _direct_unit_solve(unit):
+        # Fallback when the IDAES default initializer fails (e.g. a valve
+        # flashing a near-saturated stream: the built-in routine starts
+        # the outlet at inlet T, which at the lower pressure is a
+        # superheated state the liquid-only UREA/CARB traces cannot
+        # occupy). Re-seed the outlet and solve the unit with its inlets
+        # fixed, then release the inlets for the flowsheet solve.
+        _seed_outlet(unit)
+        cv = unit.control_volume
+        st_out = cv.properties_out[0]
+        if not st_out.temperature.fixed:
+            st_out.temperature.set_value(
+                min(value(cv.properties_in[0].temperature),
+                    value(st_out.temperature)) - 5.0)
+        ports = [p for p in unit.component_objects(Port, descend_into=False)
+                 if "outlet" not in p.local_name and "vap" not in p.local_name
+                 and "liq" not in p.local_name]
+        fixed = []
+        for p in ports:
+            for v in p.vars.values():
+                for idx in v:
+                    if not v[idx].fixed:
+                        v[idx].fix()
+                        fixed.append(v[idx])
+        res = solver.solve(unit)
+        for v in fixed:
+            v.unfix()
+        if str(res.solver.termination_condition) != "optimal":
+            raise RuntimeError(f"{unit.name}: direct solve failed "
+                               f"({res.solver.termination_condition})")
 
     # --- Aitken acceleration of the four tear streams -------------------
     # The gas loops recycle 90-95% of their streams, so plain sequential
@@ -982,6 +1016,14 @@ def solve(m, solver=None, tee=True):
     print(f"degrees of freedom before solve: {dof}")
     assert dof == 0, "flowsheet is not square"
     results = solver.solve(m, tee=tee)
+    # From the sequential initialization the first simultaneous solve can
+    # stall at a near-feasible point (residual ~1e-5) that IPOPT labels
+    # "locally infeasible"; a warm restart from there converges.
+    for _ in range(2):
+        if str(results.solver.termination_condition) == "optimal":
+            break
+        print("simultaneous solve not optimal; warm-restarting IPOPT")
+        results = solver.solve(m, tee=tee)
     if str(results.solver.termination_condition) != "optimal":
         import logging
         from pyomo.util.infeasible import log_infeasible_constraints
