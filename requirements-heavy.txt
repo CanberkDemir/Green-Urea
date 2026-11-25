@@ -4,3 +4,4 @@ omlt @ git+https://github.com/cog-imperial/OMLT
 systems2atoms @ git+https://github.com/SunoySanyal/systems2atoms.git@feature/sparse-regularization
 hyperplanetree @ git+https://github.com/SunoySanyal/systems2atoms.git@feature/sparse-regularization#subdirectory=systems2atoms/hyperplanetree
 tensorflow
+CoolProp>=7.2,<8

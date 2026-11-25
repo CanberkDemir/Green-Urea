@@ -171,6 +171,33 @@ not extractable. Choices made (all documented inline in
 `get_prop(phases)` signature and change one import line in
 `ammonia_flowsheet.py`.
 
+## Refrigeration utility
+
+`refrigeration.py` couples a closed R717 vapor-compression cycle to the
+entire C1 cooling duty. Install CoolProp 7.2 or later within major version 7.
+The four refrigerant states represent compressor suction, compressor
+discharge, subcooled condenser liquid, and isenthalpic valve discharge.
+CoolProp evaluates fixed state properties when building the model. Pyomo
+solves the circulation rate simultaneously with the process duty.
+
+The initial design assumptions are evaporation at 5 °C, condensation at
+35 °C, 5 K suction superheat, 3 K subcooling, compressor isentropic
+efficiency 0.75 and motor efficiency 0.95. The condenser needs an external
+heat sink colder than its condensing temperature. Pressure drops and
+auxiliary pump/fan loads are omitted. The report gives cooling, compressor
+electricity, condenser rejection, motor losses and electrical COP.
+Refrigerant energy closure is Q_cond = Q_evap + W_shaft. Motor losses
+are reported separately. A positive C1 heating duty is outside this
+cooling-only utility's feasible domain.
+
+The cycle represents a fixed-temperature utility with variable circulation.
+Heat-exchanger sizing and temperature profiles are not resolved. All C1
+cooling is assigned to refrigeration, so potential cooling-water precooling
+has yet to be evaluated. The reactor and 50 °C intercoolers retain their
+existing utility boundaries. Existing optimization surrogates require
+regeneration with a revised utility energy target before these refrigeration
+results can replace their aggregate thermal-duty electricity proxy.
+
 ## Environment notes
 
 * `idaes get-extensions` has no Fedora-aarch64 binaries; IPOPT 3.14.19 was

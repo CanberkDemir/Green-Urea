@@ -47,6 +47,7 @@ from pyomo.environ import (
     value,
 )
 from pyomo.network import Arc
+from refrigeration import add_refrigeration
 
 from idaes.core import FlowsheetBlock
 from idaes.models.unit_models.mixer import MomentumMixingType
@@ -374,6 +375,7 @@ def build_model(fh2_kgph=10.0, brine_kgph=None):
         doc="Total reactor heat duty [W] (isothermal profile)")
     m.fs.Qh1 = Expression(expr=m.fs.h1.heat_duty[0])
     m.fs.Qc1 = Expression(expr=m.fs.c1.heat_duty[0])
+    add_refrigeration(m.fs, -m.fs.Qc1)
     m.fs.W_comp = Expression(
         expr=sum(getattr(m.fs, f"cmp{k}").work_mechanical[0]
                  for k in range(1, N_STAGES + 1)),
@@ -504,6 +506,14 @@ def _aspen_row(ft, fh2):
 
 
 def report(m, ft=8500.0, fh2=10.0):
+    ref = m.fs.refrigeration
+    print("\nR717 refrigeration utility")
+    print(f"Refrigerant circulation: {value(ref.mass_flow):.5f} kg/s")
+    print(f"Evaporator cooling: {value(ref.evaporator_duty)/1000:.3f} kW")
+    print(f"Compressor electricity: {value(ref.electric_power)/1000:.3f} kW")
+    print(f"Condenser heat rejection: {value(ref.condenser_duty)/1000:.3f} kW")
+    print(f"Motor loss: {value(ref.motor_loss)/1000:.3f} kW")
+    print(f"Electrical COP: {value(ref.cop):.3f}")
     print("\n================ ammoniaF IDAES results ================")
     print(f"NH3 in S13 product : {value(m.fs.nh3_product_kgph):10.3f} kg/h")
     print(f"H2O in S13 product : {value(m.fs.h2o_product_kgph):10.3f} kg/h")
