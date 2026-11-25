@@ -68,11 +68,29 @@ Every item has the same fields:
   - The reactor duty (~237 kW at 60 °C) and the 50 °C intercoolers are not assigned to any utility yet. The paper itself says cooling water would suffice for those.
   - Cooling-water precooling of C1 has not been evaluated.
 
-### A7 `[WIP]` Ammonia-side energy breakdown
+### A7 `[DONE]` Ammonia-side energy breakdown
 - **What:** an equipment-level table of the ammonia section's duties (heating, cooling, shaft work) and electricity at realistic COPs, taken from the IDAES model.
 - **Why it matters:** the starting point for "reduce energy from the root", and it replaces the paper's sum-of-absolute-duties convention.
-- **Where:** new script (planned).
-- **Notes:** started 2026-11-25.
+- **Where:** `idaes_model/ammonia_energy.py`.
+- **Notes:**
+  - Done 2026-11-25. At Ft = 8500 and Fh2 = 10: reactor 236.7 kW (hot, 60 C), C1 72.2 kW (60 → 10 C), H1 41.9 kW (29 → 60 C), intercoolers 13 kW, H2 compression 18.7 kW.
+  - Paper convention (sum of absolute duties) = 383 kW-eq.
+  - Electrolysis is not included (see F1).
+
+### A8 `[DECIDE]` Flash B2 at 40–50 C instead of 10 C
+- **What:** the `.bkp` cools the reactor effluent to 10 C (C1, chiller) before flash B2.
+- **Why it matters:** lowering the cooling need at the source.
+- **Where:** `ammonia_flowsheet.py` (`T_FLASH`), `ammonia_energy.py --tflash`.
+- **Notes:**
+  - Tested in IDAES on 2026-11-25: 10 / 40 / 50 C all give 11.96 kg/h NH3 and the same purge.
+  - C1 duty falls 72 → 29 → 15 kW, and it can use cooling water instead of the chiller.
+  - Caveat: the thermo is ideal + Henry, so NH3 losses to the gas recycle may be underpredicted. Check with rigorous thermo or data before adopting.
+
+### A9 `[TODO]` Brine pre-concentration (B6) has no energy cost
+- **What:** B6 removes about 7 t/h of water from the 8.5 t/h brine (to 1400 kg/h) as an ideal Separator, in both Aspen and IDAES, at zero energy.
+- **Why it matters:** this is a real separation. Reverse osmosis at about 3–5 kWh/m3 is roughly 25–35 kW. Thermal evaporation would be MW-scale. Neither appears in the paper's energy totals.
+- **Where:** `ammonia_flowsheet.py` (`b6`).
+- **Notes:** decide on the technology (RO is likely, but the brine is ~10% salts at the inlet and ~40% at the outlet, which is above RO's practical limit). Then add an energy term.
 
 ## B. Ammonia separation / recovery (hydrous → anhydrous NH3)
 
@@ -91,8 +109,20 @@ Every item has the same fields:
 ### B3 `[WIP]` Column-based recovery: steam/vacuum stripper plus rectifier to anhydrous NH3
 - **What:** model a stripper (possibly vacuum, driven by the 60 °C reactor heat, or with MVR) and a rectifier that delivers dry NH3 to the urea section. Report the energy per kg NH3.
 - **Why it matters:** it gives a defensible alternative to B2 and the real `Q_S`.
-- **Where:** new script (planned).
-- **Notes:** started 2026-11-25.
+- **Where:** `idaes_model/ammonia_energy.py` (`recovery_streams`).
+- **Notes:**
+  - **SHORTCUT ONLY, NOT RIGOROUS.** Kremser stripping (10 stages, 99% recovery, Henry K from Sander 2015, salting-out ignored); rectifier at 15 bar with Underwood Rmin (alpha = 6), R = 1.5 Rmin.
+  - Result, ammonia section in kWh/kg NH3 with heat integration (dT_min = 10 K, 10 C flash):
+
+    | Option | kWh/kg NH3 |
+    |---|---|
+    | Membrane (paper) | 11.1 |
+    | Atmospheric steam stripper | 15.5 |
+    | Steam stripper with MVR | 9.5 |
+    | Vacuum stripper (0.123 bar, 50 C) | 5.9 |
+
+  - The vacuum stripper's reboiler is driven by the 60 C reactor heat; only the rectifier reboiler (198 C, ~16 kW) needs external heat.
+  - **Next:** rigorous IDAES column(s) to confirm; vacuum overhead condensing (10 C chiller assumed); check alpha.
 
 ## C. Urea section (ureaF replica, Bosch–Meiser)
 
@@ -176,11 +206,16 @@ Every item has the same fields:
 
 ## E. Utilities, heat integration and energy accounting
 
-### E1 `[WIP]` Reusable pinch / heat-integration module
+### E1 `[DONE]` Reusable pinch / heat-integration module
 - **What:** a problem-table pinch algorithm over a list of hot and cold streams (supply T, target T, duty), returning the minimum hot and cold utility and the pinch temperature. Applied to the ammonia side first, then plant-wide.
 - **Why it matters:** the paper assumes 90–99% recovery of `Q_S` without checking temperature levels.
 - **Where:** new module (planned), `idaes_model/heat_integration.py`.
-- **Notes:** started 2026-11-25. Keep it generic for later plant-wide use.
+- **Notes:**
+  - Done 2026-11-25. Checked against the Kemp textbook 4-stream example (hot 20, cold 60, shifted pinch 85 C: exact).
+  - Applied to the ammonia side in `ammonia_energy.py`.
+  - Grand composite curves are in `figures/ammonia_gcc_*.png`.
+  - Generic `Stream(name, t_in, t_out, duty_kw, section=...)` list, ready for E2.
+  - The finding that partly contradicts the paper's 90–99% recovery of `Q_S`: with the membrane, `Q_S` is electricity with no temperature, so there is nothing to recover. With columns, recovery is real but temperature-limited; see B3.
 
 ### E2 `[TODO]` Plant-wide heat integration (ammonia + urea + DEF)
 - **What:** run E1 on all streams together.
