@@ -51,6 +51,20 @@ UREA_SECTIONS = {
         "purge3_prod"],
 }
 
+AMMONIA_SECTIONS = {
+    "Feeds": ["h2_feed", "no3_feed"],
+    "H2 compression (4 stages, intercooled to 50 C, 27 bar)": [
+        "cmp1", "ic1", "cmp2", "ic2", "cmp3", "ic3", "cmp4"],
+    "Brine pre-concentration": ["b6"],
+    "Reaction (27 bar)": ["mixer1", "h1", "b1"],
+    "Separation & let-down": ["c1", "b2", "split1", "v1"],
+    "Products / purges": ["h2o_out", "s13", "purge"],
+}
+
+# (source, destination) pairs drawn as recycle streams
+RECYCLES = {("b26", "m01"), ("b9", "b13"), ("b17", "b5"), ("b7", "b15"),
+            ("split1", "mixer1")}
+
 
 def _label(name):
     nice = {"b10h": "B10", "b16h": "B16", "b20h": "B20", "b7_mix": "B7 feed",
@@ -58,7 +72,13 @@ def _label(name):
             "steam_feed": "STRIPH2O", "def_prod": "DEF-OUT", "s30_prod": "S30",
             "s42_prod": "S42", "purge1_prod": "PURGE1",
             "purge2_prod": "PURGE2", "purge3_prod": "PURGE3",
-            "b25col": "B25 (10 trays)"}
+            "b25col": "B25 (10 trays)",
+            "h2_feed": "H2FEED", "no3_feed": "NO3-IN", "h2o_out": "H2O-OUT",
+            "s13": "S13 (NH3 product)", "purge": "PURGE1",
+            "mixer1": "MIXER1", "split1": "SPLIT1",
+            "cmp1": "MCOMPR1 stage 1", "cmp2": "stage 2",
+            "cmp3": "stage 3", "cmp4": "stage 4", "ic1": "IC1",
+            "ic2": "IC2", "ic3": "IC3", "b1": "B1 (RPlug)"}
     return nice.get(name, name.upper())
 
 
@@ -99,7 +119,23 @@ def build_graph(m, sections, title):
         if src_u is dst_u:
             continue
         edges.append((src_u, dst_u, _phase_tag(arc.source)))
-        units.update([src_u, dst_u])
+
+    # Translators only bridge property packages - draw straight through
+    def is_tr(u):
+        return "Translator" in type(u).__name__
+    changed = True
+    while changed:
+        changed = False
+        for i, (s, d, t) in enumerate(edges):
+            if is_tr(d):
+                outs = [e for e in edges if e[0] is d]
+                edges = [e for e in edges if e[0] is not d
+                         and e is not edges[i]]
+                edges += [(s, o[1], t or o[2]) for o in outs]
+                changed = True
+                break
+    for s, d, _ in edges:
+        units.update([s, d])
 
     placed = set()
     for i, (sec, names) in enumerate(sections.items()):
@@ -125,10 +161,9 @@ def build_graph(m, sections, title):
                fillcolor=fill)
 
     for s, d, tag in edges:
-        rec = d.local_name in ("m01", "b5", "b15", "b13")
+        rec = (s.local_name, d.local_name) in RECYCLES
         g.edge(s.local_name, d.local_name, label=tag,
-               color="#b5402a" if rec and s.local_name in (
-                   "b26", "b9", "b17", "b7") else "#444444")
+               color="#b5402a" if rec else "#444444")
     return g
 
 
@@ -144,7 +179,7 @@ def main():
     else:
         import ammonia_flowsheet as A
         m = A.build_model() if hasattr(A, "build_model") else A.build()
-        g = build_graph(m, {}, "Green ammonia: IDAES flowsheet "
+        g = build_graph(m, AMMONIA_SECTIONS, "Green ammonia: IDAES flowsheet "
                                "(from aspen/ammoniaF.bkp)")
     base = out_dir / f"{which}_pfd"
     for fmt in ("svg", "png"):
