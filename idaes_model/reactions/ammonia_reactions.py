@@ -59,6 +59,37 @@ from idaes.models.properties.modular_properties.reactions.rate_forms import (
     power_law_rate,
 )
 
+# H2 availability (TODO A4). The .bkp rates are zero-order in H2, so H2
+# can be consumed after it has run out (infeasible below ~9.8 kg/h H2 at
+# Ft=8500). Every rate is multiplied by C_H2 / (C_H2 + K_H2): with K_H2
+# ~1% of the inlet H2 concentration (~2000 mol/m3) the factor is ~1
+# while H2 is plentiful - the Aspen rate law - and drives the rates to
+# zero as H2 is exhausted, so all available H2 reacts and the remaining
+# nitrate/nitrite leaves unreacted. Set H2_LIMITED = False to recover the
+# verbatim .bkp kinetics.
+H2_LIMITED = True
+K_H2 = 20.0  # mol/m3, ~1% of the inlet H2 concentration
+
+
+class power_law_h2_limited:
+    """power_law_rate times an H2 saturation factor."""
+
+    @staticmethod
+    def build_parameters(rblock, config):
+        from pyomo.environ import Var
+        power_law_rate.build_parameters(rblock, config)
+        rblock.k_h2 = Var(initialize=K_H2,
+                          units=pyunits.mol / pyunits.m**3,
+                          doc="H2 half-saturation concentration")
+        rblock.k_h2.fix()
+
+    @staticmethod
+    def return_expression(b, rblock, r_idx, T):
+        base = power_law_rate.return_expression(b, rblock, r_idx, T)
+        c_h2 = b.state_ref.conc_mol_phase_comp["Liq", "H2"]
+        return base * c_h2 / (c_h2 + rblock.k_h2)
+
+
 _CAL = 4.184  # J per thermochemical calorie
 T_OPERATING = 333.15  # K, folds Aspen's T-EXP=1 prefactor into k0
 
@@ -116,7 +147,8 @@ def get_rxn(property_package):
         rate_reactions[name] = {
             "stoichiometry": dict(stoich),
             "rate_constant": arrhenius,
-            "rate_form": power_law_rate,
+            "rate_form": (power_law_h2_limited if H2_LIMITED
+                          else power_law_rate),
             "concentration_form": ConcentrationForm.molarity,
             "parameter_data": {
                 "arrhenius_const": (k_eff, pyunits.s**-1),

@@ -477,6 +477,32 @@ def initialize(m, recycle_guess=None):
     return solver
 
 
+def solve_h2_continuation(m, solver, fh2_target_kgph, step_kgph=0.5):
+    """Walk the H2 feed from its current value to ``fh2_target_kgph`` in
+    small steps, re-solving each time. Needed for H2-starved feeds
+    (TODO A4): the PFR initializer cannot start cold from a state where
+    H2 runs out inside the reactor."""
+    port = m.fs.h2_feed.outlet
+    f0 = value(port.flow_mol[0]) * 3600.0 * MW["H2"]
+    n = max(1, int(abs(fh2_target_kgph - f0) / step_kgph + 0.999))
+    res = None
+    for i in range(1, n + 1):
+        f = f0 + (fh2_target_kgph - f0) * i / n
+        port.flow_mol[0].fix(f / 3600.0 / MW["H2"])
+        # a step can end in restoration at ~1e-5 infeasibility (stiff
+        # H2 depletion front in the PFR); warm re-solves finish it
+        for _ in range(4):
+            res = solver.solve(m, load_solutions=False)
+            if res.solution:
+                m.solutions.load_from(res)
+            if str(res.solver.termination_condition) == "optimal":
+                break
+        if str(res.solver.termination_condition) != "optimal":
+            raise RuntimeError(f"H2 continuation failed at {f:.2f} kg/h "
+                               f"({res.solver.termination_condition})")
+    return res
+
+
 def solve(m, solver=None):
     if solver is None:
         solver = get_solver("ipopt", options={"tol": 1e-6, "max_iter": 500})

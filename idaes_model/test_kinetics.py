@@ -137,6 +137,11 @@ def check_idaes_reaction_block(k_expected):
     c_no3 = value(sb.conc_mol_phase_comp["Liq", "NO3-"])
     r1 = value(rb.reaction_rate["MAIN1"])
     expected = value(rb.k_rxn["MAIN1"]) * c_no3
+    # H2-availability factor (TODO A4): rate = k C_NO3 * C_H2/(C_H2+K_H2)
+    from reactions import ammonia_reactions as AR
+    if AR.H2_LIMITED:
+        c_h2 = value(sb.conc_mol_phase_comp["Liq", "H2"])
+        expected *= c_h2 / (c_h2 + AR.K_H2)
     rel = abs(r1 - expected) / expected
     print(f"MAIN1 rate: {r1:.4e} mol/m3/s (k*C = {expected:.4e}, "
           f"rel.err {rel:.1e})")
