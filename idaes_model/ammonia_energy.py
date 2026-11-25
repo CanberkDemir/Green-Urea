@@ -52,6 +52,14 @@ X_D = 0.995            # anhydrous NH3 purity (mole fraction)
 P_RECT_T_BOT = 198.0   # C, water boiling point at 15 bar (rectifier sump)
 T_RECT_COND = 40.0     # C, NH3 condensing at 15.5 bar
 T_RECT_FEED = 150.0    # C, rectifier feed after bottoms/feed exchanger
+# Brine pre-concentration B6 (TODO A9; docs/references.md R7). The feed is
+# already ~103 g/kg TDS, above the ~70-80 g/L conventional-RO limit, so
+# water removal is thermal: mechanical vapour compression ~24 kWh/m3
+# (70 -> 250 g/L); beyond NaCl saturation an evaporator-crystallizer is
+# needed, taken as ~35 kWh/m3.
+E_MVC = 24.0           # kWh per m3 water removed, below saturation
+E_CRYST = 35.0         # kWh per m3 water removed, crystallizing
+NACL_SOL = 0.360       # kg NaCl per kg water at 25 C (26.5 wt%)
 
 
 def henry_k(t_c, p_bar):
@@ -78,22 +86,64 @@ def kremser_s(n, recovery):
 
 
 # -------------------------------------------------------------- flowsheet
-def solve_ammonia(ft=8500.0, fh2=10.0, t_flash_c=None):
+def solve_ammonia(ft=8500.0, fh2=10.0, t_flash_c=None, s16_water=None):
     import ammonia_flowsheet as A
+    if s16_water is not None:
+        # water left in the B6 concentrate [kg/h] (.bkp: 1400)
+        A.S16_H2O_KGPH = s16_water
     if t_flash_c is not None:
         # C1/B2 flash temperature (the .bkp uses 10 C). At 40-50 C the
         # NH3 product is unchanged but C1 needs no chiller.
         A.T_FLASH = t_flash_c + 273.15
     logging.disable(logging.WARNING)
-    m = A.build_model(fh2_kgph=fh2)
-    s = A.initialize(m)
     import contextlib
     import io
+    # dilute concentrates (> ~4000 kg/h water) do not start cold: converge
+    # at 3000 kg/h and walk the B6 water target up (continuation)
+    target = A.S16_H2O_KGPH
+    start = min(target, 3000.0)
+    A.S16_H2O_KGPH = start
+    m = A.build_model(fh2_kgph=fh2)
+    A.S16_H2O_KGPH = target
+    s = A.initialize(m)
+
+    def robust_solve():
+        for _ in range(4):
+            r = s.solve(m, load_solutions=False)
+            if r.solution:
+                m.solutions.load_from(r)
+            if str(r.solver.termination_condition) == "optimal":
+                return
+        raise RuntimeError(
+            f"ammonia flowsheet: {r.solver.termination_condition}")
+
     with contextlib.redirect_stdout(io.StringIO()):
-        r = A.solve(m, s)
-    if str(r.solver.termination_condition) != "optimal":
-        raise RuntimeError(f"ammonia flowsheet: {r.solver.termination_condition}")
+        robust_solve()
+        n = max(1, int((target - start) / 500.0 + 0.999))
+        for i in range(1, n + 1):
+            w = start + (target - start) * i / n
+            m.fs.b6.s16_h2o_target.set_value(w / 3600.0 / A.MW["H2O"])
+            robust_solve()
     return m
+
+
+def brine_concentration(m):
+    """Electricity for B6 water removal and a saturation check."""
+    import ammonia_flowsheet as A
+    feed = A.BRINE_KGPH
+    w_in = feed["H2O"]
+    w_left = A.S16_H2O_KGPH
+    removed = max(w_in - w_left, 0.0)
+    nacl = min(feed["Na+"] * 58.44 / 22.99, feed["Cl-"] * 58.44 / 35.45)
+    saturated = nacl / max(w_left, 1e-9) > NACL_SOL
+    e = E_CRYST if saturated else E_MVC
+    salts = sum(v for k, v in feed.items() if k != "H2O")
+    return {"water removed [kg/h]": removed,
+            "concentrate salts [wt%]": 100 * salts / (salts + w_left),
+            "NaCl / water [kg/kg]": nacl / max(w_left, 1e-9),
+            "above NaCl saturation": float(saturated),
+            "specific energy [kWh/m3]": e,
+            "B6 electricity [kW]": removed / 1000.0 * e}
 
 
 def base_streams(m):
@@ -229,11 +279,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fh2", type=float, default=10.0)
     ap.add_argument("--dtmin", type=float, default=10.0)
+    ap.add_argument("--s16water", type=float, default=None,
+                    help="water left in the B6 concentrate [kg/h] "
+                         "(.bkp 1400; 7621 = no concentration)")
+    ap.add_argument("--no-b6-energy", action="store_true",
+                    help="exclude B6 brine-concentration energy (as in the "
+                         "paper and the .bkp)")
     ap.add_argument("--tflash", type=float, default=None,
                     help="C1/B2 flash temperature [C] (default: .bkp 10 C)")
     a = ap.parse_args()
 
-    m = solve_ammonia(fh2=a.fh2, t_flash_c=a.tflash)
+    m = solve_ammonia(fh2=a.fh2, t_flash_c=a.tflash, s16_water=a.s16water)
     fs = m.fs
     nh3 = value(fs.nh3_product_kgph)
     h2o = value(fs.h2o_product_kgph)
@@ -256,6 +312,12 @@ def main():
     paper = sum(s.duty_kw for s in base) + w_comp
     print(f"  paper convention (sum |duties|, COP 1): {paper:.1f} kW-eq")
 
+    b6 = brine_concentration(m)
+    print("\nB6 brine pre-concentration (absent from .bkp and paper):")
+    for k_, v in b6.items():
+        print(f"  {k_:34s} {v:10.2f}")
+    b6_kw = 0.0 if a.no_b6_energy else b6["B6 electricity [kW]"]
+
     out_dir = Path(__file__).resolve().parents[1] / "figures"
     rows = {}
     for opt, label in (("M", "membrane (paper)"),
@@ -265,7 +327,7 @@ def main():
         rs, shaft, info = recovery_streams(opt, nh3, h2o, s13, t13)
         streams = base + rs
         res = pinch(streams, a.dtmin)
-        sh = w_comp + shaft
+        sh = w_comp + shaft + b6_kw
         no = electricity(res, streams, sh, cop_ch, integrated=False)
         hi = electricity(res, streams, sh, cop_ch, integrated=True)
         rows[label] = (no, hi, res, info)
@@ -290,6 +352,10 @@ def main():
               f"{hi['TOTAL, resistance heating [kWe]'] / nh3:12.1f} "
               f"{hi['TOTAL, heat-pump heating [kWe]'] / nh3:14.1f} "
               f"{res.q_hot_min:15.1f}")
+    print(f"\nSWEEP s16water={a.s16water} NH3={nh3:.2f} B6={b6_kw:.1f}kW "
+          + " ".join(f"{lab.split()[0]}:"
+                     f"{hi['TOTAL, heat-pump heating [kWe]'] / nh3:.2f}"
+                     for lab, (no, hi, res, _) in rows.items()))
     print("\n(kWh per kg NH3 recovered; ammonia section incl. H2 compression,"
           " excl. electrolysis. Membrane option: its 7.1 kWh/kg N is pure"
           " electricity and cannot be heat-integrated.)")

@@ -35,12 +35,17 @@ Every item has the same fields:
 - **Where:** `idaes_model/ammonia_flowsheet.py`, `idaes_model/README.md`.
 - **Notes:** checked against Aspen at Ft = 8500 kg/h and Fh2 = 10 kg/h. Mass balance is within 0.04% and NH3 within -6%. The Qh1 and Qc1 heater duties disagree because of mixing enthalpy; see the README. Re-run on Windows on 2026-11-24 and the results reproduce.
 
-### A2 `[DECIDE]` Kinetic network: the paper and SI disagree with the `.bkp`
-- **What:** the paper (Eqs. for r1–r4) and SI Table S7 describe side reactions that give about 90% NH3 selectivity. The `.bkp`, and therefore the IDAES model, uses a different side-reaction network that gives about 55–59% selectivity.
-- **Why it matters:** NH3 yield, H2 demand and everything downstream depend on it. The paper states 85–92% selectivity, but the model that was actually run does not reach that.
-- **Where:** `idaes_model/reactions/ammonia_reactions.py`, `main_acs.tex` §Ammonia Catalytic Hydrogenation, SI Table S7.
-- **Notes:** decide which network is correct, then either fix the paper text or re-tune the kinetics.
-
+### A2 `[DECIDE]` Kinetic network / catalyst choice: the paper and SI disagree with the `.bkp`
+- **What:** the paper (Eqs. for r1–r4) and SI Table S7 give ~90% NH3 selectivity. The `.bkp`, and the IDAES default, use a different side-reaction network that gives 55%.
+- **Why it matters:** NH3 yield, H2 demand and everything downstream.
+- **Where:** `reactions/ammonia_reactions.py` (`NETWORK = "bkp" | "si"`), `docs/references.md` §1.
+- **Notes:**
+  - Done 2026-11-25: both networks are implemented and switchable; the default is still `"bkp"`.
+    - **"bkp":** 55.4% selectivity, 11.96 kg/h NH3, ~9.8 kg/h H2 at full conversion.
+    - **"si":** 87.3% selectivity, 18.85 kg/h NH3, ~11 kg/h H2 at full conversion (at Fh2 = 10 it is H2-limited and hits the A4 solver limit).
+  - **Literature (R1–R4):** Pd–Cu is an N2-selective drinking-water catalyst, and in alkaline media it largely stops at nitrite. 90% NH3 is not supported for Pd–Cu. Ru/C is NH3-selective with no nitrite intermediate, including in waste ion-exchange brines (Huo et al. 2020, coupled with membrane distillation, which is the closest analogue to our process).
+  - **Decision for the team:** either (a) switch the manuscript catalyst to Ru and use a high-selectivity network (refit kinetics to R1/R2 data), or (b) keep Pd–Cu with `.bkp`-like low selectivity.
+  - Also check the paper's Zhang et al. reference (`\cite{Pd-Cu_experimental}`).
 ### A3 `[DONE]` H2 recycle: the paper is wrong; the lever is the fresh-H2 feed, not the recycle fraction
 - **What:** the paper (§Energy-Demand Structure, lines ~1014–1029, and the LCA lines ~1254–1260) says the roughly 2× stoichiometric H2 excess "is not recycled" and that recycling it would cut electrolysis from about 77 to about 20 kWh/kg urea.
 - **Why it matters:** electrolysis is about 40% of plant electricity.
@@ -95,12 +100,24 @@ Every item has the same fields:
   - C1 duty falls 72 → 29 → 15 kW, and it can use cooling water instead of the chiller.
   - Caveat: the thermo is ideal + Henry, so NH3 losses to the gas recycle may be underpredicted. Check with rigorous thermo or data before adopting.
 
-### A9 `[TODO]` Brine pre-concentration (B6) has no energy cost
-- **What:** B6 removes about 7 t/h of water from the 8.5 t/h brine (to 1400 kg/h) as an ideal Separator, in both Aspen and IDAES, at zero energy.
-- **Why it matters:** this is a real separation. Reverse osmosis at about 3–5 kWh/m3 is roughly 25–35 kW. Thermal evaporation would be MW-scale. Neither appears in the paper's energy totals.
-- **Where:** `ammonia_flowsheet.py` (`b6`).
-- **Notes:** decide on the technology (RO is likely, but the brine is ~10% salts at the inlet and ~40% at the outlet, which is above RO's practical limit). Then add an energy term.
+### A9 `[DECIDE]` Brine pre-concentration (B6): infeasible as modelled, and the single largest hidden load
+- **What:** B6 removes 6.2 t/h of water at zero energy and leaves a 38.6 wt% salt concentrate. That is above NaCl saturation (56 g NaCl per 100 g water vs ~36), so ~280 kg/h NaCl would crystallize. The feed (103 g/kg TDS) is already above the conventional RO limit, so the water removal is thermal (MVC ~24 kWh/m3, crystallizer ~35 kWh/m3; refs R7).
+- **Why it matters:** about 218 kW at the `.bkp` point, about as much as all other ammonia-section loads together.
+- **Where:** `ammonia_energy.py` (`brine_concentration`, `--s16water`, `--no-b6-energy`), `ammonia_flowsheet.py` (`b6.s16_h2o_target`, now a mutable Param for continuation).
+- **Notes:** sweep run 2026-11-25. Ammonia-section kWh/kg NH3 (heat-integrated, heat-pump heating, including B6):
 
+  | Water left in concentrate | Membrane | Vacuum stripper |
+  |---|---|---|
+  | 1,400 kg/h (`.bkp`) | 29.2 | 23.7 |
+  | 4,000 kg/h | 19.1 | 14.8 |
+  | 5,000 kg/h | 17.4 | **14.6** |
+  | 6,000 kg/h | 15.6 | 17.2 |
+  | 7,600 kg/h (no concentration) | **12.9** | 21.3 |
+
+  - The best design depends on the recovery technology (B2/B3): no concentration with the membrane, or concentrate to ~15–18 wt% salts with the vacuum stripper. Either is about 2× better than the `.bkp`.
+  - NH3 product is unchanged across the range (the reactor is oversized).
+  - The 2,637 and 3,000 kg/h points are numerically fragile.
+  - Default left at 1,400 pending the decision.
 ## B. Ammonia separation / recovery (hydrous → anhydrous NH3)
 
 ### B1 `[TODO]` Ammonia recovery is missing from IDAES entirely

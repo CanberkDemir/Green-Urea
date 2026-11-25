@@ -42,6 +42,7 @@ from pyomo.environ import (
     ConcreteModel,
     Constraint,
     Expression,
+    Param,
     TransformationFactory,
     units as pyunits,
     value,
@@ -333,10 +334,14 @@ def build_model(fh2_kgph=10.0, brine_kgph=None):
             m.fs.b6.split_fraction[0, "s16", c].fix(1.0 - 1e-9)
     # water split left free; cap s16 water mass flow at 1400 kg/h
     s16_h2o_mol = S16_H2O_KGPH / 3600.0 / MW["H2O"]
+    # mutable so the concentration level can be walked by continuation
+    # (TODO A9; ammonia_energy.py --s16water)
+    m.fs.b6.s16_h2o_target = Param(initialize=s16_h2o_mol, mutable=True,
+                                   units=pyunits.mol / pyunits.s)
     m.fs.b6.s16_h2o_cap = Constraint(
         expr=m.fs.b6.s16_state[0].flow_mol
         * m.fs.b6.s16_state[0].mole_frac_comp["H2O"]
-        == s16_h2o_mol * pyunits.mol / pyunits.s
+        == m.fs.b6.s16_h2o_target
     )
 
     # MIXER1 outlet pressure (Aspen PARAM PRES = 27 bar); with
