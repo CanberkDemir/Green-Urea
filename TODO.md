@@ -266,6 +266,7 @@ Every item has the same fields:
   - All three are below the paper's ~190 and its LCA threshold of 56 kWh/kg.
   - The "plant-wide HI saving" printed for case 1 is not meaningful (no heat integration in that case).
   - The ureaF replica is not yet run through the same accounting; see C6.
+  - Rerun 2026-11-25 after A10 (T-dependent Henry) and the 0.08 bar stripper: case 1 41.2 (unchanged); case 2 **31.5**; case 3 failed with an IPOPT internalSolverError in the ammonia solve (SI network at Fh2 = 11.5, s16 = 5000). Its last converged value, before those two changes, was 22.7. This is solver fragility (see A4/A9), not a physical result. Re-run case 3 after making the ammonia initialization more robust.
 ## E. Utilities, heat integration and energy accounting
 
 ### E1 `[DONE]` Reusable pinch / heat-integration module
