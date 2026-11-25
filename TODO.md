@@ -191,6 +191,12 @@ Every item has the same fields:
   - Re-test after an idaes-ext upgrade.
   - PR is the fallback; it is less important than C2–C4.
 
+
+### C6 `[TODO]` ureaF converts only ~4% of the NH3 fed into urea
+- **What:** in the Aspen grid data at Fnh3 = 9.96 and Fco2 = 14.58 kg/h, DEF-OUT carries 10.87 kg/h × 0.0628 = **0.68 kg/h urea**, which uses only ~0.39 kg/h NH3. The rest leaves through purges (PURGE1–3), S42 and vents. The low-pressure DEF plant (total recycle) converts essentially all NH3: 11.96 kg/h NH3 → 21 kg/h urea.
+- **Why it matters:** this, more than the energy accounting, is why the paper's ~190 kWh/kg urea is so high. Every kWh of electrolysis and ammonia recovery is spread over very little urea.
+- **Where:** `aspen/data/ureaF_results_live.csv`, `urea_flowsheet.py`, `def_lowp_flowsheet.py`.
+- **Notes:** check the purge fractions in the `.bkp` (B9 / B19 0.9, B26 0.95) and the S42 stream. A higher recycle or the DEF route fixes it. Flag for the rewrite.
 ## D. Low-pressure DEF plant (new design, US 10,759,745 B2)
 
 ### D1 `[DONE]` Flowsheet built from scratch
@@ -219,12 +225,14 @@ Every item has the same fields:
   - The pre-5fc8a93 version (e55ae7c) solved here.
   - Suggested fix: guard every `init()` result (reject and keep the previous state if a unit returns non-optimal), and use less damping or a Wegstein tear.
   - Left for Canberk, since it is their latest change. Not fixed here.
-### D3 `[TODO]` Validate the reactor conversion correlation
+### D3 `[WIP]` Validate the reactor conversion correlation
 - **What:** X = 0.64 + 0.05(N/C − 4) − 0.09(H/C − 0.5) is a trend assumption. The patent gives no conversion. The 10% carbamate retention is also assumed.
 - **Why it matters:** recycle size, energy and the benefit of D2 all scale with it.
-- **Where:** `def_lowp_flowsheet.py` (`conversion()`).
-- **Notes:** replace with the R01 kinetics, or with literature equilibrium data (e.g. Inoue).
-
+- **Where:** `def_lowp_flowsheet.py` (`conversion()`), `docs/references.md` R9.
+- **Notes:**
+  - Literature check 2026-11-25: the **directions** are confirmed (X rises with N/C, falls with H/C; equilibrium maximum near 190–195 C; Inoue et al. 1972). Industrial ranges are consistent (equilibrium up to about 80–86% CO2 basis).
+  - The **coefficients are not verified**. The correlation papers (Inoue 1972; Brouwer 2009; Voskov 2016 on UreaKnowHow) are paywalled or login-only.
+  - **Next:** get the Inoue equation and refit, or switch to the R01 kinetic/equilibrium model.
 ### D4 `[TODO]` Rigorous stripper and DEF product specs
 - **What:**
   - The purification stripper and the condensate NH3 stripper are single stages.
@@ -234,12 +242,22 @@ Every item has the same fields:
 - **Where:** `def_lowp_flowsheet.py`.
 - **Notes:** none yet.
 
-### D5 `[TODO]` Compare against the ureaF replica on the same basis
+### D5 `[WIP]` Compare against the ureaF replica on the same basis
 - **What:** a like-for-like energy table: same urea output, same utility COPs.
 - **Why it matters:** quantifies the claimed energy saving of the low-pressure route.
-- **Where:** new comparison script.
-- **Notes:** none yet.
+- **Where:** `plant_energy.py`.
+- **Notes:**
+  - End-to-end results 2026-11-25, in kWh electricity per kg urea (`python plant_energy.py --def-module <e55ae7c copy>`):
 
+    | Case | Total |
+    |---|---|
+    | 1. Paper-like (`.bkp` kinetics, B6 to 1400 with energy, membrane, 10 C flash, no heat integration) | 41.2 (electrolysis 24.2, ammonia 15.6, urea 1.4) |
+    | 2. Improved (B6 to 5000, vacuum stripper, 50 C flash, plant-wide heat integration) | 32.0 |
+    | 3. Case 2 + SI/Ru-like selectivity | 22.7 |
+
+  - All three are below the paper's ~190 and its LCA threshold of 56 kWh/kg.
+  - The "plant-wide HI saving" printed for case 1 is not meaningful (no heat integration in that case).
+  - The ureaF replica is not yet run through the same accounting; see C6.
 ## E. Utilities, heat integration and energy accounting
 
 ### E1 `[DONE]` Reusable pinch / heat-integration module
@@ -253,26 +271,29 @@ Every item has the same fields:
   - Generic `Stream(name, t_in, t_out, duty_kw, section=...)` list, ready for E2.
   - The finding that partly contradicts the paper's 90–99% recovery of `Q_S`: with the membrane, `Q_S` is electricity with no temperature, so there is nothing to recover. With columns, recovery is real but temperature-limited; see B3.
 
-### E2 `[TODO]` Plant-wide heat integration (ammonia + urea + DEF)
+### E2 `[WIP]` Plant-wide heat integration (ammonia + urea + DEF)
 - **What:** run E1 on all streams together.
 - **Why it matters:** cross-section heat matches (e.g. urea condensers → ammonia stripper).
-- **Where:** E1 module.
-- **Notes:** after E1 and B3.
-
-### E3 `[TODO]` Electricity accounting consistent with the paper's surrogates
-- **What:** the paper's unit electricity (E_N, E_U) is the sum of absolute duties at COP = 1. IDAES should report heating (electric heater or heat pump COP), cooling (cooling water vs chiller COP) and shaft work separately.
+- **Where:** `plant_energy.py` (pinch over ammonia and DEF streams).
+- **Notes:**
+  - First run 2026-11-25: the plant-wide match saves an extra 18 kW (case 2) and 27 kW (case 3) over section-wise integration. The DEF condensers (90 C) cover part of the ammonia-side heat demand.
+  - The DEF streams come from the e55ae7c DEF version because of D6.
+  - Not yet: exchanger network design or area/cost.
+### E3 `[DONE]` Electricity accounting consistent with the paper's surrogates
+- **What:** the paper's unit electricity (E_N, E_U) is the sum of absolute duties at COP = 1. IDAES should report heating, cooling and shaft work separately.
 - **Why it matters:** the paper's 190 kWh/kg urea headline and the LCA threshold of 56 kWh/kg both depend on this convention.
-- **Where:** a new reporting helper used by all flowsheets.
-- **Notes:** none yet.
-
+- **Where:** `ammonia_energy.py` (`electricity`), used by `plant_energy.py`.
+- **Notes:**
+  - Shaft work is counted as is.
+  - Heating is by heat pump (0.5 Carnot from 25 C), with resistance heating also reported.
+  - Cooling above 35 C uses cooling water at 2% of the duty; below 35 C it uses the R717 chiller COP (5.84).
 ## F. Missing plant blocks (in the paper, not in IDAES)
 
-### F1 `[TODO]` Electrolyzer block
+### F1 `[DONE]` Electrolyzer block
 - **What:** the H2 demand model from the paper: Faradaic efficiency 0.98 and e_spec = 50 kWh/kg H2.
 - **Why it matters:** about 40% of plant electricity.
-- **Where:** none yet (algebraic model in the paper).
-- **Notes:** simple enough as a Pyomo block or a post-processing calculation.
-
+- **Where:** `idaes_model/plant_energy.py` (`E_SPEC_H2`, `FE`).
+- **Notes:** algebraic, as in the paper, and applied to the fresh-H2 feed of the ammonia flowsheet. It contributes 24.2 kWh/kg urea with `.bkp` kinetics and 17.6 with the SI network.
 ### F2 `[TODO]` Link the ammonia → urea interface
 - **What:** feed the recovered NH3 (B1/B3) into the urea and DEF flowsheets, plus the CO2 source and feed conditioning.
 - **Why it matters:** an end-to-end plant model.

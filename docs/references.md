@@ -79,5 +79,15 @@ text before quoting numbers from them in the manuscript.
 - No HP stripper; reactor at 150–250 bar, >190 °C, N/C 2.7–5.0; MP dissociation at 15–25 bar and LP at 3–5 bar; low-pressure steam stripping at 0.01–1.5 bar(abs) with condensate recycled to the reactor; DEF at 32.5 wt% (ISO 22241: alkalinity as NH3 < 0.2 wt%, biuret ≤ 0.3 wt%).
 - **Supports:** `def_lowp_flowsheet.py` (TODO D1–D4). The patent gives no conversion, residence time or energy numbers.
 
+**[R9] Urea synthesis equilibrium conversion correlations (TODO D3).**
+- Inoue, S.; Kanai, K.; Otsuka, E. (1972). "Equilibrium of Urea Synthesis. II." *Bull. Chem. Soc. Jpn.*
+  <https://www.semanticscholar.org/paper/Equilibrium-of-Urea-Synthesis.-II.-Inoue-Kanai/65265bd1b97bdc878970c80bffb2f853a93fc992> *(not read in full)*
+  - Equilibrium CO2 conversion as a function of N/C, H/C and T. Maximum near 195 C; 5–15% above Frejacques.
+- Brouwer, M. (2009). "Thermodynamics of the Urea Process." UreaKnowHow.com *(login-only, not read)*.
+- Voskov et al. (2016). "Thermodynamic Model of the Urea Synthesis Process." UreaKnowHow.com *(login-only; abstract only)*. UNIQUAC + virial; valid for 135–230 C, 3.5–45 MPa, N/C 2–5.5.
+- Empirical modeling of urea synthesis chemical equilibria (ResearchGate):
+  <https://www.researchgate.net/publication/336485790_Empirical_modeling_of_urea_synthesis_chemical_equilibria> *(not read)*
+- **Supports:** the direction of `def_lowp_flowsheet.py: conversion()` only. The coefficients are unverified.
+
 ## 5. Thermodynamic and solver notes (not literature, but recorded for the same reason)
 - idaes-ext 3.4.2 (Windows x86-64): any two-phase **SRK** state block crashes IPOPT with access violation 0xC0000005, including IDAES's own BT_PR example switched to SRK. PR works. See TODO C5.
