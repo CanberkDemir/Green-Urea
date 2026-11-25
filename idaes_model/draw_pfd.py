@@ -28,6 +28,7 @@ STYLE = {
     "Heater": ("box", "#fbe8c8"),
     "Pump": ("invtriangle", "#e3dcf2"),
     "Compressor": ("trapezium", "#e3dcf2"),
+    "PressureChanger": ("invtriangle", "#e3dcf2"),
     "CSTR": ("box3d", "#f7cfa3"),
     "PFR": ("box3d", "#f7cfa3"),
     "StoichiometricReactor": ("box3d", "#f2dfc4"),
@@ -61,9 +62,28 @@ AMMONIA_SECTIONS = {
     "Products / purges": ["h2o_out", "s13", "purge"],
 }
 
+DEF_SECTIONS = {
+    "Feeds": ["co2_feed", "nh3_feed", "steam_feed", "water_feed"],
+    "HP synthesis (150 bar, 190 C) - reactor only": [
+        "nh3_pump", "rec_pump", "m_r", "reactor"],
+    "MP dissociation (20 bar, 160 C)": ["v_mp", "d_mp", "f_mp"],
+    "LP dissociation (4 bar, 135 C)": ["v_lp", "d_lp", "f_lp"],
+    "Purification (0.5 bar steam stripping) & DEF finishing": [
+        "v_pu", "v_steam", "m_strip", "stripper", "def_cool", "m_def",
+        "def_trim"],
+    "Condensate handling": ["vac_cond", "cond_pump", "cond_split", "nh3s",
+                            "v_cond_def"],
+    "Carbamate recovery": ["m_lpc", "lpc", "f_lpc", "lp_pump", "lp_comp",
+                           "m_mpc", "mpc", "nh3_cond", "f_mpc"],
+    "Products / vents": ["def_prod", "vent_mp", "vent_vac"],
+}
+
 # (source, destination) pairs drawn as recycle streams
 RECYCLES = {("b26", "m01"), ("b9", "b13"), ("b17", "b5"), ("b7", "b15"),
-            ("split1", "mixer1")}
+            ("split1", "mixer1"), ("rec_pump", "m_r"),
+            ("f_mpc", "rec_pump"), ("lp_pump", "m_mpc"),
+            ("lp_comp", "m_mpc"), ("cond_split", "m_lpc"),
+            ("nh3s", "m_lpc")}
 
 
 def _label(name):
@@ -78,7 +98,26 @@ def _label(name):
             "mixer1": "MIXER1", "split1": "SPLIT1",
             "cmp1": "MCOMPR1 stage 1", "cmp2": "stage 2",
             "cmp3": "stage 3", "cmp4": "stage 4", "ic1": "IC1",
-            "ic2": "IC2", "ic3": "IC3", "b1": "B1 (RPlug)"}
+            "ic2": "IC2", "ic3": "IC3", "b1": "B1 (RPlug)",
+            "co2_feed": "CO2", "water_feed": "Demin water",
+            "steam_feed": "LP steam", "def_prod": "DEF 32.5 wt%",
+            "vent_mp": "MP vent", "vent_vac": "Vacuum vent",
+            "nh3_pump": "NH3 HP pump", "rec_pump": "Carbamate HP pump",
+            "m_r": "M-R", "reactor": "Urea reactor",
+            "v_mp": "Valve to 20 bar", "d_mp": "MP decomposer",
+            "f_mp": "MP separator", "v_lp": "Valve to 4 bar",
+            "d_lp": "LP decomposer", "f_lp": "LP separator",
+            "v_pu": "Valve to 0.5 bar", "v_steam": "Steam valve",
+            "m_strip": "M-strip", "stripper": "Vacuum steam stripper",
+            "def_cool": "Solution cooler", "m_def": "DEF dilution",
+            "def_trim": "DEF trim cooler", "vac_cond": "Vacuum condenser",
+            "cond_pump": "Condensate pump", "cond_split": "Condensate split",
+            "nh3s": "Condensate NH3 stripper",
+            "v_cond_def": "Stripped-water cooler", "m_lpc": "M-LPC",
+            "lpc": "LP carbamate condenser", "f_lpc": "LPC separator",
+            "lp_pump": "LP-MP pump", "lp_comp": "LP gas compressor",
+            "m_mpc": "M-MPC", "mpc": "MP carbamate condenser",
+            "nh3_cond": "NH3 condenser", "f_mpc": "MPC separator"}
     return nice.get(name, name.upper())
 
 
@@ -176,6 +215,11 @@ def main():
         m = U.build_model()
         g = build_graph(m, UREA_SECTIONS,
                         "Green urea: IDAES flowsheet (from aspen/ureaF.bkp)")
+    elif which == "def":
+        import def_lowp_flowsheet as D
+        m = D.build_model()
+        g = build_graph(m, DEF_SECTIONS, "Low-pressure DEF urea plant "
+                        "(after US 10,759,745 B2): IDAES flowsheet")
     else:
         import ammonia_flowsheet as A
         m = A.build_model() if hasattr(A, "build_model") else A.build()
