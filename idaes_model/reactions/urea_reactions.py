@@ -82,7 +82,7 @@ Implementation notes (same conventions as ammonia_reactions.py):
 
 from pyomo.environ import Constraint, exp, units as pyunits
 
-from idaes.core.util.math import smooth_min
+from idaes.core.util.math import smooth_max
 from idaes.models.properties.modular_properties.base.generic_reaction import (
     ConcentrationForm,
 )
@@ -220,7 +220,8 @@ def add_carbeq_conversion(reactor, conv=CARBEQ_CONV):
     gas reagent (RGibbs replacement - see module docstring for why this
     is equivalent to the equilibrium at the A01/A012/A013 conditions).
 
-    extent = conv * smooth_min(F_CO2_in, F_NH3_in / 2)
+    extent = conv * F_CO2_in * (F_NH3_in / 2)
+             / smooth_max(F_CO2_in, F_NH3_in / 2)
     """
     t0 = reactor.flowsheet().time.first()
     cv = reactor.control_volume
@@ -228,7 +229,11 @@ def add_carbeq_conversion(reactor, conv=CARBEQ_CONV):
     ext = cv.rate_reaction_extent[t0, "CARBF"]
     f_co2 = st_in.flow_mol * st_in.mole_frac_comp["CO2"]
     f_nh3 = st_in.flow_mol * st_in.mole_frac_comp["NH3"]
-    # eps in mol/s; feeds are O(0.01-1) mol/s
+    # A conventional smooth_min can become negative near a zero feed.
+    # a*b/smooth_max(a,b) stays nonnegative and below both available flows.
+    flow_unit = pyunits.mol / pyunits.s
+    limiting_flow = f_co2 * (f_nh3 / 2) / (flow_unit * smooth_max(
+        f_co2 / flow_unit, f_nh3 / (2 * flow_unit), eps=1e-6))
     reactor.carbeq_conv = Constraint(
-        expr=ext == conv * smooth_min(f_co2, f_nh3 / 2, eps=1e-6)
+        expr=ext == conv * limiting_flow
     )

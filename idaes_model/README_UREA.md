@@ -1,5 +1,18 @@
 # IDAES replica of the ureaF (Bosch-Meiser) subprocess
 
+The separate `def_lowp_flowsheet.py` models the low-pressure DEF route from
+US 10,759,745 B2. Its synthesis reactor retains 10% of unconverted carbon
+as carbamate, while heated MP (20 bar, 160 °C) and LP (4 bar, 135 °C)
+decomposers dissociate 99% of the carbamate arriving at each level. Those
+fractions and the reactor conversion trend are modeling assumptions that
+need validation against process data. The default case and `--direct 0.5`
+both solve all specification stages and give 32.5 wt% urea at the selected
+15 kg/h CO2 feed. The default product is 62.98 kg/h with 20.47 kg/h urea.
+The default external mass-balance residual is below 5e-5 kg/h. The
+condensers' limiting-reactant expression remains nonnegative at trace
+feeds. The flowsheet still uses single-stage flashes for purification and
+the approximate ideal/Raoult/Henry property package.
+
 A first-principles IDAES/Pyomo flowsheet reproducing the Aspen Plus model
 `aspen/ureaF.bkp` (urea synthesis per Pustjens & Van Den Tillaart,
 US 10,759,745 B2, Stamicarbon: HP carbamate synthesis loop, MP/LP
