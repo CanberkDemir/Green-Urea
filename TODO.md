@@ -41,18 +41,27 @@ Every item has the same fields:
 - **Where:** `idaes_model/reactions/ammonia_reactions.py`, `main_acs.tex` §Ammonia Catalytic Hydrogenation, SI Table S7.
 - **Notes:** decide which network is correct, then either fix the paper text or re-tune the kinetics.
 
-### A3 `[DECIDE]` H2 recycle: the paper and the model disagree
-- **What:** the paper (§Energy-Demand Structure) says the roughly 2× stoichiometric H2 excess "is not recycled". The `.bkp` and the IDAES model recycle 90% of the flash vapour (SPLIT1).
-- **Why it matters:** electrolysis is about 40% of plant electricity. The paper names H2 recycle as the largest single efficiency lever, at about 77 → 20 kWh/kg urea.
-- **Where:** `idaes_model/ammonia_flowsheet.py` (`split1`), `main_acs.tex` lines ~1014–1029.
-- **Notes:** check what the surrogate data actually assumed before changing either one.
-
-### A4 `[TODO]` Hydrogen-starved operating regime
-- **What:** the rate laws are zero-order in H2, so the model goes infeasible for Fh2 below about 9.8 kg/h at Ft = 8500.
-- **Why it matters:** the optimizer may want to run with lower H2 (A3), which the model cannot represent.
-- **Where:** `idaes_model/reactions/ammonia_reactions.py`.
-- **Notes:** possible fix: add an H2-availability factor C_H2/(C_H2+eps) to the rates. This deviates from the `.bkp` rate law.
-
+### A3 `[DONE]` H2 recycle: the paper is wrong; the lever is the fresh-H2 feed, not the recycle fraction
+- **What:** the paper (§Energy-Demand Structure, lines ~1014–1029, and the LCA lines ~1254–1260) says the roughly 2× stoichiometric H2 excess "is not recycled" and that recycling it would cut electrolysis from about 77 to about 20 kWh/kg urea.
+- **Why it matters:** electrolysis is about 40% of plant electricity.
+- **Where:** `ammonia_flowsheet.py` (`RECYCLE_FRAC`, `h2_feed`); sweep run on 2026-11-25.
+- **Notes:**
+  - **The "excess" is not excess.** With the `.bkp` network, H2 consumption at full nitrate conversion is 9.8 kg/h: 6.4 kg/h goes to the NH3 route (4.5 H2/NH3) and 3.4 kg/h to the N2 side reactions (3 H2/N, ~45% of nitrate). The paper's "4.4 kg/h stoichiometric" counts the NH3 route only.
+  - **The recycle already exists.** The model recycles 90% of the flash gas at 27 bar, so no recompression is needed.
+  - **H2 lost in the purge = fresh − consumed, independent of the recycle fraction.** Swept 0.80/0.90/0.95/0.98 × Fh2 9.5–10.5 kg/h: at Fh2 = 10 the loss is 0.21 kg/h at every recycle fraction, and at 10.5 it is 0.71 kg/h. A higher recycle only grows the loop (0.43 → 5.25 mol/s) and C1 cooling (71 → 79 kW).
+  - **Decision:** control fresh H2 at the consumption requirement (~9.8 kg/h at Ft = 8500, i.e. ~0.82 kg H2/kg NH3) with a small margin, and keep the recycle at 0.8–0.9. This saves at most ~2% of electrolysis compared with Fh2 = 10.
+  - **Real lever:** selectivity (A2). At ~90% selectivity the same nitrate gives ~19.4 kg/h NH3 at ~0.57 kg H2/kg NH3, which is 30% less electrolysis per kg NH3.
+  - **Paper text to fix:** "not recycled" and the 77 → 20 kWh/kg claim.
+### A4 `[WIP]` Hydrogen-starved operating regime
+- **What:** the `.bkp` rates are zero-order in H2, so the model could consume H2 it doesn't have and went infeasible below ~9.8 kg/h.
+- **Why it matters:** the optimizer must be able to run with less H2. All available H2 should react, and the leftover nitrate should pass through unreacted.
+- **Where:** `reactions/ammonia_reactions.py` (`power_law_h2_limited`, `K_H2`, `H2_LIMITED`), `ammonia_flowsheet.py` (`solve_h2_continuation`), `test_kinetics.py`.
+- **Notes:**
+  - Done 2026-11-25: every rate is multiplied by C_H2/(C_H2 + K_H2) with K_H2 = 20 mol/m3 (~1% of the inlet H2).
+  - Results unchanged at Fh2 ≥ 10. At 9.75 / 9.5 / 9.25 kg/h, H2 leaves at ~1e-11 mol/s, NH3 is 11.91 / 11.60 / 11.30 kg/h, and NO3- out is 0.0015 / 0.0105 / 0.0195 mol/s. This is the intended behaviour.
+  - K_H2 = 1 was too sharp to solve.
+  - **Still open:** cold starts fail below ~9 kg/h, and warm continuation is unreliable (IPOPT restoration). Robust init for the strongly starved regime is untested. Consider more PFR elements or a dedicated initializer.
+  - `H2_LIMITED = False` restores the verbatim `.bkp` kinetics.
 ### A5 `[TODO]` Electrolyte thermodynamics (ELECNRTL)
 - **What:** the paper uses ELECNRTL. IDAES uses a reduced eNRTL / ideal-plus-Henry package, so heats of mixing are missing.
 - **Why it matters:** this explains the H1/C1 duty errors in A1, and those duties feed the energy breakdown.
