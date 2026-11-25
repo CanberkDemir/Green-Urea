@@ -8,7 +8,7 @@ Ammonia-side energy breakdown, NH3-recovery options and heat integration.
      M   gas-stripping membrane, paper's black box: 7.1 kWh/kg N
          (Iddya et al. 2020), electricity, no temperature information;
      S1  atmospheric steam stripper (100 C) + rectifier (15 bar);
-     S2  vacuum stripper (0.123 bar, 50 C, so the 60 C reactor heat can
+     S2  vacuum stripper (0.08 bar, ~47 C with brine BPE, so the 60 C reactor heat can
          drive its reboiler) + rectifier (15 bar);
      S3  S1 with bottoms mechanical vapour recompression (MVR) supplying
          the stripping steam.
@@ -184,7 +184,11 @@ def recovery_streams(option, nh3_kgph, h2o_kgph, s13_kgph, t_s13):
     if option in ("S1", "S3"):
         p, t_b = 1.013, 100.0
     else:                                   # S2 vacuum
-        p, t_b = 0.123, 50.0
+        # 0.08 bar: the rigorous column (nh3_stripper.py) shows the brine
+        # raises the stage temperature to ~47 C (boiling-point elevation),
+        # leaving a 13 K approach to the 60 C reactor heat. At 0.123 bar
+        # the stages run at ~56 C - only 4 K, infeasible for dT_min 10 K.
+        p, t_b = 0.08, 47.0
     k = henry_k(t_b, p)
     s_fac = kremser_s(N_STAGES_STRIP, RECOVERY)
     l_kmol = h2o_kgph / 18.015

@@ -96,10 +96,9 @@ Every item has the same fields:
 - **Why it matters:** lowering the cooling need at the source.
 - **Where:** `ammonia_flowsheet.py` (`T_FLASH`), `ammonia_energy.py --tflash`.
 - **Notes:**
-  - Tested in IDAES on 2026-11-25: 10 / 40 / 50 C all give 11.96 kg/h NH3 and the same purge.
-  - C1 duty falls 72 → 29 → 15 kW, and it can use cooling water instead of the chiller.
-  - Caveat: the thermo is ideal + Henry, so NH3 losses to the gas recycle may be underpredicted. Check with rigorous thermo or data before adopting.
-
+  - Tested 2026-11-25: 10 / 30 / 40 / 50 C all give 11.96 kg/h NH3. C1 duty falls 72 → 43 → 29 → 15 kW, and it can use cooling water instead of the chiller.
+  - Re-checked with the temperature-dependent NH3 Henry constant (A10): NH3 lost to the purge is only 0.001 → 0.004 kg/h (0.03%) at 50 C, because the gas recycle (~1 mol/s) is tiny compared with the liquid (~130 mol/s).
+  - **Recommendation:** adopt 40–50 C. It needs a team OK because it changes the `.bkp` design basis.
 ### A9 `[DECIDE]` Brine pre-concentration (B6): infeasible as modelled, and the single largest hidden load
 - **What:** B6 removes 6.2 t/h of water at zero energy and leaves a 38.6 wt% salt concentrate. That is above NaCl saturation (56 g NaCl per 100 g water vs ~36), so ~280 kg/h NaCl would crystallize. The feed (103 g/kg TDS) is already above the conventional RO limit, so the water removal is thermal (MVC ~24 kWh/m3, crystallizer ~35 kWh/m3; refs R7).
 - **Why it matters:** about 218 kW at the `.bkp` point, about as much as all other ammonia-section loads together.
@@ -118,6 +117,15 @@ Every item has the same fields:
   - NH3 product is unchanged across the range (the reactor is oversized).
   - The 2,637 and 3,000 kg/h points are numerically fragile.
   - Default left at 1,400 pending the decision.
+
+### A10 `[DONE]` Temperature-dependent NH3 Henry constant in the ammonia package
+- **What:** NH3 Henry volatility was a constant Kpx = 6.0e4 Pa (Sander value at ~15 C). Stripping at 40–100 C and the warmer flash (A8) need its temperature dependence.
+- **Why it matters:** NH3 volatility at 50 C is about 4.7× the constant value. The stripper and flash results would be wrong without it.
+- **Where:** `properties/enrtl_ammonia.py` (`NH3_HENRY_T_DEPENDENT`, uses `VantHoffH` from `ideal_urea.py`).
+- **Notes:**
+  - Done 2026-11-25: van't Hoff with Sander (2015) H = 59 mol/(kg·bar) at 25 C and 4200 K, giving Kpx 9.41e4 Pa at 25 C, 5.8e4 at 15 C and 2.8e5 at 50 C.
+  - The Aspen validation at 10 C is unchanged (NH3 −6.2%, Mt −0.04%).
+  - Set the flag to False to restore the constant value.
 ## B. Ammonia separation / recovery (hydrous → anhydrous NH3)
 
 ### B1 `[TODO]` Ammonia recovery is missing from IDAES entirely
@@ -132,24 +140,24 @@ Every item has the same fields:
 - **Where:** `main_acs.tex` §Ammonia Separation and §Heat Integration.
 - **Notes:** compare against B3 before deciding.
 
-### B3 `[WIP]` Column-based recovery: steam/vacuum stripper plus rectifier to anhydrous NH3
-- **What:** model a stripper (possibly vacuum, driven by the 60 °C reactor heat, or with MVR) and a rectifier that delivers dry NH3 to the urea section. Report the energy per kg NH3.
-- **Why it matters:** it gives a defensible alternative to B2 and the real `Q_S`.
-- **Where:** `idaes_model/ammonia_energy.py` (`recovery_streams`).
+### B3 `[WIP]` Column-based recovery: vacuum stripper validated rigorously; rectifier still shortcut
+- **What:** a stripper (vacuum, driven by the 60 C reactor heat, or with MVR) and a rectifier that delivers dry NH3 to the urea section.
+- **Why it matters:** a defensible alternative to the membrane (B2) and the real `Q_S`.
+- **Where:** `ammonia_energy.py` (`recovery_streams`, shortcut), `nh3_stripper.py` (rigorous stripper).
 - **Notes:**
-  - **SHORTCUT ONLY, NOT RIGOROUS.** Kremser stripping (10 stages, 99% recovery, Henry K from Sander 2015, salting-out ignored); rectifier at 15 bar with Underwood Rmin (alpha = 6), R = 1.5 Rmin.
-  - Result, ammonia section in kWh/kg NH3 with heat integration (dT_min = 10 K, 10 C flash):
+  - Shortcut (2026-11-25): Kremser stripping, 10 stages, 99% recovery, Henry K from Sander; rectifier at 15 bar with Underwood Rmin (alpha = 6), R = 1.5 Rmin.
+  - **Rigorous stripper (2026-11-25), `nh3_stripper.py`:** 10-stage MESH column (Mixer + Flash per stage) on the ammonia two-phase package, reboiler duty solved for 99% recovery.
 
-    | Option | kWh/kg NH3 |
-    |---|---|
-    | Membrane (paper) | 11.1 |
-    | Atmospheric steam stripper | 15.5 |
-    | Steam stripper with MVR | 9.5 |
-    | Vacuum stripper (0.123 bar, 50 C) | 5.9 |
+    | Case | Reboiler | Overhead NH3 |
+    |---|---|---|
+    | 0.123 bar | 66.3 kW (shortcut 60.5) | 13.5 mol% (shortcut 13.8) |
+    | 0.08 bar | 64.4 kW, stages 44–47 C | — |
+    | Improved case (s16 = 5000, flash 50 C) | 190.8 kW (shortcut 208.7) | — |
 
-  - The vacuum stripper's reboiler is driven by the 60 C reactor heat; only the rectifier reboiler (198 C, ~16 kW) needs external heat.
-  - **Next:** rigorous IDAES column(s) to confirm; vacuum overhead condensing (10 C chiller assumed); check alpha.
-
+  - The shortcut is within ~10% of the rigorous column.
+  - **Correction from the rigorous model:** brine boiling-point elevation puts the stages ~6 K above pure water. At 0.123 bar the stages run at 56 C, only a 4 K approach to the 60 C reactor heat, which is infeasible. **Use 0.08 bar** (47 C, 13 K approach). `ammonia_energy.py` S2 was updated to 0.08 bar / 47 C. The improved case then gives an ammonia section of 7.4 kWh/kg urea and a plant total of 31.5.
+  - **Still shortcut:** the 15 bar rectifier to anhydrous NH3, and the vacuum overhead condensation (10 C chiller assumed; NH3-rich vapour under vacuum).
+  - Ideal liquid: no salting-out, which is conservative.
 ## C. Urea section (ureaF replica, Bosch–Meiser)
 
 ### C1 `[DONE]` IDAES replica of `aspen/ureaF.bkp` converges with IPOPT

@@ -136,6 +136,22 @@ _H2O = {
 
 # Dissolved-gas / volatile solutes. Henry's law (mole-fraction basis, Kpx)
 # with constants representative of the 10-60 degC operating window [Sander].
+# NH3 Henry volatility. The original constant Kpx = 6.0e4 Pa is the Sander
+# value at ~15 C, adequate for the 10 C flash only. A stripper (50-100 C)
+# or a warmer flash (TODO A8) needs the temperature dependence: van't Hoff
+# with Sander (2015) H = 59 mol/(kg bar) at 25 C, d ln H / d(1/T) = 4200 K
+# -> Kpx(25 C) = 9.41e4 Pa, Kpx(15 C) = 5.8e4, Kpx(50 C) = 2.8e5 Pa.
+# Set NH3_HENRY_T_DEPENDENT = False to restore the constant value.
+NH3_HENRY_T_DEPENDENT = True
+
+
+def _nh3_henry_method():
+    if not NH3_HENRY_T_DEPENDENT:
+        return ConstantH
+    from properties.ideal_urea import VantHoffH
+    return VantHoffH
+
+
 _NH3 = {
     "type": Solute,
     "henry_component": {
@@ -148,7 +164,7 @@ _NH3 = {
     "phase_equilibrium_form": {("Vap", "Liq"): fugacity},
     "parameter_data": {
         "mw": (17.0305e-3, pyunits.kg / pyunits.mol),  # [NIST]
-        "henry_ref": {"Liq": 6.0e4},  # [Sander] Kpx in Pa, 10-25 degC
+        "henry_ref": {"Liq": 6.0e4},  # [Sander] Kpx in Pa, ~15 degC
         "cp_mol_liq_comp_coeff": (79.9, pyunits.J / pyunits.mol / pyunits.K),  # [NBS] NH3(aq)
         "enth_mol_form_liq_comp_ref": (-80.29e3, pyunits.J / pyunits.mol),  # [NBS] NH3(aq)
         "dens_mol_liq_comp_coeff": (35.0e3, pyunits.mol / pyunits.m**3),
@@ -345,6 +361,11 @@ def get_prop(phases=("Liq", "Vap")):
                 cfg["parameter_data"].pop(key, None)
         components[name] = cfg
 
+    if has_liq and "henry_component" in components["NH3"]             and NH3_HENRY_T_DEPENDENT:
+        nh3 = components["NH3"]
+        nh3["henry_component"]["Liq"]["method"] = _nh3_henry_method()
+        nh3["parameter_data"]["henry_ref"] = {"Liq": 9.41e4}
+        nh3["parameter_data"]["henry_vant_hoff_C"] = {"Liq": 4200.0}
     if has_liq:
         for name, data in _IONS.items():
             components[name] = deepcopy(data)
