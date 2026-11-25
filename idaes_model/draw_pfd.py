@@ -86,7 +86,18 @@ RECYCLES = {("b26", "m01"), ("b9", "b13"), ("b17", "b5"), ("b7", "b15"),
             ("nh3s", "m_lpc")}
 
 
+# per-flowsheet labels that would otherwise collide between models
+LABELS = {
+    "urea": {"steam_feed": "STRIPH2O", "def_prod": "DEF-OUT", "b1": "B1"},
+    "ammonia": {"b1": "B1 (RPlug)"},
+    "def": {"steam_feed": "LP steam", "def_prod": "DEF 32.5 wt%"},
+}
+_ACTIVE = {}
+
+
 def _label(name):
+    if name in _ACTIVE:
+        return _ACTIVE[name]
     nice = {"b10h": "B10", "b16h": "B16", "b20h": "B20", "b7_mix": "B7 feed",
             "b25_mix": "B25 feed", "nh3_feed": "NH3-IN", "co2_feed": "CO2-IN",
             "steam_feed": "STRIPH2O", "def_prod": "DEF-OUT", "s30_prod": "S30",
@@ -181,6 +192,12 @@ def build_graph(m, sections, title):
         with g.subgraph(name=f"cluster_{i}") as c:
             c.attr(label=sec, style="rounded,dashed", color="#999999",
                    fontsize="13", fontcolor="#333333")
+            # strict left-to-right reading: feeds in the first column,
+            # products/vents in the last
+            if sec.lower().startswith("feed"):
+                c.attr(rank="min")
+            elif sec.lower().startswith("product"):
+                c.attr(rank="max")
             for nm in names:
                 u = getattr(fs, nm, None)
                 if u is None or u not in units:
@@ -202,12 +219,15 @@ def build_graph(m, sections, title):
     for s, d, tag in edges:
         rec = (s.local_name, d.local_name) in RECYCLES
         g.edge(s.local_name, d.local_name, label=tag,
+               # recycles must not drag the layout backwards
+               constraint="false" if rec else "true",
                color="#b5402a" if rec else "#444444")
     return g
 
 
 def main():
     which = sys.argv[1] if len(sys.argv) > 1 else "urea"
+    _ACTIVE.update(LABELS.get(which, {}))
     out_dir = HERE.parent / "figures"
     out_dir.mkdir(exist_ok=True)
     if which == "urea":
