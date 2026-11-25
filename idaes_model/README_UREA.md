@@ -137,3 +137,26 @@ Interpretation:
   0.34), although the runner script labels it a distillate-side product.
   The .bkp M-codes that suggest otherwise are graphics indices - see the
   phase-routing note in `urea_flowsheet.py`.
+
+## Investigation notes (Windows x86-64, idaes-pse 2.13, idaes-ext 3.4.2)
+
+Findings while chasing the Wurea -48% gap:
+
+* **R01 equilibria are not the cause.** At the converged base case both
+  rate pairs close exactly (NH3v^2*CO2v/CARBl = 1.0000, UREA*H2O/CARB =
+  1.0000). Urea is set by C_UREA = C_CARB / C_H2O with an R01 liquid that
+  is ~71% water, all of it returned by the recycles (feeds are dry).
+* **The B25 single-stage surrogate is ill-conditioned.** `T_B25_BOT`
+  426.15 K -> R01 water halves but urea *falls* to 0.30 kg/h; 430.15 K
+  -> simultaneous solve infeasible. One kelvin swings the whole recycle
+  state, so the column surrogates (B25, and likely B7) are the leading
+  suspect; rigorous tray columns are the real fix.
+* **SRK is still blocked, but not by platform.** Cubic roots load on
+  x86-64, yet any two-phase *SRK* state block crashes IPOPT (access
+  violation 0xC0000005), including IDAES's own BT_PR example switched to
+  SRK. Peng-Robinson works. A PR variant of `srk_urea.py` gets past the
+  feeds but fails at the 200 bar pump B13 during initialization.
+* Without Aspen installed, internal stream data (R01 inlet water,
+  recycle compositions) are unavailable; the grid CSV records only
+  DEF-OUT and duties. A stream table from Aspen at Fnh3=10/Fco2=15 would
+  pinpoint which recycle carries the discrepancy.
