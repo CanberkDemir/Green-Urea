@@ -13,9 +13,11 @@ from dataclasses import dataclass, replace
 from math import expm1, isfinite, pi
 
 if __package__:
-    from .h2_transfer_reactor import MW_H2, MW_NH3, MW_NO3, h2_solubility_mol_m3
+    from .ni2p_dossier import hydrogen_equilibrium, batch_calibration
+    from .h2_transfer_reactor import MW_H2, MW_NH3, MW_NO3
 else:
-    from h2_transfer_reactor import MW_H2, MW_NH3, MW_NO3, h2_solubility_mol_m3
+    from ni2p_dossier import hydrogen_equilibrium, batch_calibration
+    from h2_transfer_reactor import MW_H2, MW_NH3, MW_NO3
 
 
 @dataclass(frozen=True)
@@ -28,16 +30,15 @@ class Inputs:
     h2_kgph: float = 10.0
     pressure_bar: float = 27.0  # proposed plant scenario
     temperature_k: float = 333.15
-    sechenov_kg_mol: float = 0.10  # assumed mixed-brine NaCl proxy
     tubes: int = 1  # provisional single bed in A4 parameter document
     diameter_m: float = 1.0
     length_m: float = 10.0
     bed_void_fraction: float = 0.40
     liquid_saturation: float = 0.50  # liquid share of bed voids
     packed_bulk_density_kg_m3: float = 600.0
-    active_fraction: float = 0.122  # active Ni2P per kg supported catalyst
+    active_fraction: float = 0.1239  # active Ni2P per kg supported catalyst
     activity_factor: float = 1.0  # unvalidated supported-catalyst effectiveness
-    k_w_m3_kg_s: float = 9.08e-4  # batch-derived at pH 2, 60 C, 0.075 atm H2
+    k_w_m3_kg_s: float = batch_calibration()[1]  # batch-derived at pH 2, 60 C, 0.075 atm H2
     nh3_selectivity: float = 0.96  # batch reference, unvalidated in brine
     h2_half_saturation_mol_m3: float | None = None  # default = lab reference C*
     kla_s: float = 0.001  # gas/liquid transfer, per liquid volume; assumed
@@ -72,7 +73,7 @@ def run(p: Inputs) -> Result:
                 p.pressure_bar, p.temperature_k, p.tubes, p.diameter_m,
                 p.length_m, p.packed_bulk_density_kg_m3, p.steps)
     nonnegative = (p.chloride_kgph, p.nitrate_kgph, p.h2_kgph,
-                   p.sechenov_kg_mol, p.activity_factor, p.k_w_m3_kg_s,
+                   p.activity_factor, p.k_w_m3_kg_s,
                    p.kla_s, p.ksa_s)
     if any(not isfinite(x) or x <= 0 for x in positive):
         raise ValueError("flow, pressure, temperature and bed geometry must be positive")
@@ -93,13 +94,20 @@ def run(p: Inputs) -> Result:
     w_supported = v_bed * p.packed_bulk_density_kg_m3
     w_active = w_supported * p.active_fraction
     dt = v_liq / q_liq / p.steps
-    c_ref = h2_solubility_mol_m3(0.075 * 1.01325, p.temperature_k, 0, 0)
+    # Saturated gas, ideal H2 fugacity; pure-water vapour pressure approximation.
+    psat_bar = 10**(4.6543 - 1435.264/(p.temperature_k - 64.848))
+    if p.pressure_bar <= psat_bar:
+        raise ValueError("Total pressure must exceed water vapour pressure")
+    def equilibrium(partial_bar, total_bar, salt, water_density):
+        return hydrogen_equilibrium(p.temperature_k, total_bar/10,
+                                    partial_bar/10, psat_bar/10, salt, water_density)
+    c_ref = equilibrium(0.075*(1.01325-psat_bar), 1.01325, 0, 983.2)
     k_half = c_ref if p.h2_half_saturation_mol_m3 is None else p.h2_half_saturation_mol_m3
     if not isfinite(k_half) or k_half <= 0:
         raise ValueError("H2 half-saturation concentration must be positive")
     f_ref = c_ref / (c_ref + k_half)
-    c_star_in = h2_solubility_mol_m3(p.pressure_bar, p.temperature_k,
-                                    nacl_molal, p.sechenov_kg_mol)
+    c_star_in = equilibrium(p.pressure_bar-psat_bar, p.pressure_bar,
+                            nacl_molal, p.brine_density_kg_m3*p.water_kgph/p.brine_kgph)
     gas_h2 = p.h2_kgph / MW_H2 / 3600
     gas_h2_in = gas_h2
     gas_n2 = 0.0
@@ -116,9 +124,9 @@ def run(p: Inputs) -> Result:
     def transfer(g_h2: float, g_n2: float, c_liq: float, duration: float):
         if p.kla_s == 0 or duration == 0 or g_h2 + g_n2 <= 0:
             return g_h2, c_liq
-        partial = p.pressure_bar * g_h2 / (g_h2 + g_n2)
-        c_eq = h2_solubility_mol_m3(partial, p.temperature_k,
-                                    nacl_molal, p.sechenov_kg_mol)
+        partial = (p.pressure_bar-psat_bar) * g_h2 / (g_h2 + g_n2)
+        c_eq = equilibrium(partial, p.pressure_bar, nacl_molal,
+                           p.brine_density_kg_m3*p.water_kgph/p.brine_kgph)
         delta = (c_eq - c_liq) * (-expm1(-p.kla_s * duration))
         delta = max(-c_liq, min(delta, g_h2 / q_liq))
         return g_h2 - delta * q_liq, c_liq + delta
@@ -175,7 +183,8 @@ def main() -> None:
     args = {k: v for k, v in vars(parser.parse_args()).items() if v is not None}
     p = replace(Inputs(), **args)
     r = run(p)
-    print("Provisional Ni2P PFR; batch-derived kinetics, assumed H2 transfer")
+    print("Provisional Ni2P PFR; dossier batch calibration and NaCl H2 solubility")
+    print("Fixed 96% selectivity is an endpoint scenario; pH kinetics and brine activity unvalidated.")
     print(f"Bed / active Ni2P          {r.supported_catalyst_kg:.0f} / {r.active_ni2p_kg:.0f} kg")
     print(f"Liquid volume / flow       {r.liquid_volume_m3:.3f} m3 / {r.liquid_flow_m3_s*3600:.3f} m3/h")
     print(f"H2 equilibrium inlet       {r.equilibrium_h2_in_mol_m3:.3f} mol/m3")

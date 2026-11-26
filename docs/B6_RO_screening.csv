@@ -1,0 +1,13 @@
+case,osmotic_coefficient,water_left_kgph,water_removed_kgph,bulk_osmotic_bar,feed_pressure_bar,pump_kWe_no_ERD,net_kWe_with_ERD,vacuum_recovery_heat_kWth
+83 bar: no recovery at specified margin,0.9
+120 bar,0.9,6543.525,1077.49,97.273,120.0,32.824,19.178,266.728
+target (1400 precipitation-invalid),0.9,5000,2621.015,127.301,153.031,41.935,27.204,205.946
+target (1400 precipitation-invalid),0.9,1400,6221.015,454.648,513.112,141.256,118.968,64.179
+83 bar: no recovery at specified margin,1.0
+120 bar,1.0,7270.584,350.431,97.273,120.0,32.824,17.842,295.358
+target (1400 precipitation-invalid),1.0,5000,2621.015,141.446,168.59,46.227,29.648,205.946
+target (1400 precipitation-invalid),1.0,1400,6221.015,505.164,568.68,156.584,131.737,64.179
+83 bar: no recovery at specified margin,1.2
+120 bar: no recovery at specified margin,1.2
+target (1400 precipitation-invalid),1.2,5000,2621.015,169.735,199.709,54.81,34.535,205.946
+target (1400 precipitation-invalid),1.2,1400,6221.015,606.197,679.816,187.238,157.275,64.179

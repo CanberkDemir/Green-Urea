@@ -29,7 +29,10 @@ import math
 import sys
 from pathlib import Path
 
-from pyomo.environ import value
+def value(expr):
+    """Load Pyomo only when evaluating an IDAES model."""
+    from pyomo.environ import value as pyomo_value
+    return pyomo_value(expr)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from heat_integration import Stream, pinch, plot_gcc  # noqa: E402

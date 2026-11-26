@@ -10,7 +10,7 @@ class Ni2PPFRTests(unittest.TestCase):
     def test_reference_bed_inventory_and_balances(self):
         r = run(Inputs())
         self.assertAlmostEqual(r.supported_catalyst_kg, 4712.38898, places=3)
-        self.assertAlmostEqual(r.active_ni2p_kg, r.supported_catalyst_kg * 0.122)
+        self.assertAlmostEqual(r.active_ni2p_kg, r.supported_catalyst_kg * 0.1239)
         self.assertLess(abs(r.h2_balance_error_mol_s), 1e-10)
         self.assertLess(abs(r.nitrogen_balance_error_mol_s), 1e-10)
         self.assertGreater(r.nitrate_conversion, 0)
