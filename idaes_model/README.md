@@ -24,7 +24,7 @@ flash separation with gas recycle, product let-down).
 ```bash
 conda activate idaes-pse            # has idaes + ipopt (conda-forge)
 python test_kinetics.py             # kinetics checks
-python ammonia_flowsheet.py         # default validation point Ft=8500, Fh2=10
+python ammonia_flowsheet.py         # 40 C design point, Ft=8500, Fh2=10
 python ammonia_flowsheet.py 8500 12.5   # other (Ft, Fh2) grid points
 ```
 
@@ -39,8 +39,8 @@ python ammonia_flowsheet.py 8500 12.5   # other (Ft, Fh2) grid points
 | `MIXER1` | 27 bar | `Mixer` |
 | `H1` | 60 degC, 27 bar | `Heater` |
 | `B1` (RPlug) | T-SPEC isothermal at inlet T, NTUBE=15, L=10 m, D=1 m, NPHASE=1 (liquid), reactions AMMONIA1 | `PFR`, area = 15*pi/4 m2, T fixed along length |
-| `C1` | 10 degC, 27 bar | `Heater` |
-| `B2` (Flash2) | 10 degC, 27 bar | `Flash` (Q=0, dP=0 after C1) |
+| `C1` | original 10 degC; design default 40 degC, 27 bar | `Heater` |
+| `B2` (Flash2) | original 10 degC; design default 40 degC, 27 bar | `Flash` (Q=0, dP=0 after C1) |
 | `SPLIT1` | N2REC : PURGE1 = 0.9 : 0.1 | `Separator` (totalFlow) |
 | `V1` | P-OUT = 1 bar | `Heater` with Q=0 (isenthalpic valve) |
 | `S13` | hydrous ammonia product | `Product` |
@@ -174,8 +174,22 @@ not extractable. Choices made (all documented inline in
 
 ## Refrigeration utility
 
+The design default is a 40 °C C1/B2 flash. With 30 °C cooling-water supply
+and a 5 K minimum approach, the C1 outlet is above the 35 °C cooling-water
+limit, so all C1 cooling is assigned to water. The 60 °C isothermal reactor
+and 50 °C intercoolers also reject heat to cooling water. Pump and fan
+electricity is estimated at 0.02 kWe per kW of water cooling. These are
+utility assignments and energy estimates, not heat-exchanger or pump sizing.
+
+For an optional colder flash, `cooling_utilities.py` allocates C1 duty above
+35 °C to water and duty below 35 °C to R717 using a constant-heat-capacity
+temperature split. At the 40 °C design point this split is exact: R717
+circulation and electric power are zero. Below 35 °C, refine the split with
+an enthalpy calculation before sizing equipment. The minimum supported C1
+outlet is 10 °C for the present R717 state assumptions.
+
 `refrigeration.py` couples a closed R717 vapor-compression cycle to the
-entire C1 cooling duty. Install CoolProp 7.2 or later within major version 7.
+chilled portion of C1 cooling. Install CoolProp 7.2 or later within major version 7.
 The four refrigerant states represent compressor suction, compressor
 discharge, subcooled condenser liquid, and isenthalpic valve discharge.
 CoolProp evaluates fixed state properties when building the model. Pyomo
@@ -192,10 +206,7 @@ are reported separately. A positive C1 heating duty is outside this
 cooling-only utility's feasible domain.
 
 The cycle represents a fixed-temperature utility with variable circulation.
-Heat-exchanger sizing and temperature profiles are not resolved. All C1
-cooling is assigned to refrigeration, so potential cooling-water precooling
-has yet to be evaluated. The reactor and 50 °C intercoolers retain their
-existing utility boundaries. Existing optimization surrogates require
+Heat-exchanger sizing and temperature profiles are not resolved. Existing optimization surrogates require
 regeneration with a revised utility energy target before these refrigeration
 results can replace their aggregate thermal-duty electricity proxy.
 

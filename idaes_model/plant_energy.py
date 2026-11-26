@@ -179,7 +179,7 @@ def main():
     cases = [
         ("1 paper-like: bkp kinetics, B6 to 1400 kg/h, membrane, 10 C "
          "flash, no heat integration",
-         dict(network="bkp", fh2=10.0, s16=1400, tflash=None,
+         dict(network="bkp", fh2=10.0, s16=1400, tflash=10.0,
               recovery="M", integrate=False)),
         ("2 improved: bkp kinetics, B6 to 5000 kg/h, vacuum stripper, "
          "50 C flash, heat integration",

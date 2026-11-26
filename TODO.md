@@ -80,14 +80,14 @@ Every item has the same fields:
 - **Where:** `idaes_model/properties/enrtl_ammonia.py`.
 - **Notes:** Aspen's APV140 parameters are licensed and cannot be extracted.
 
-### A6 `[WIP]` Refrigeration utility for C1
-- **What:** a closed R717 vapour-compression cycle (CoolProp) carries the whole C1 cooling duty.
-- **Why it matters:** the paper charges cooling at COP = 1. A real chiller COP lowers cooling electricity several-fold.
-- **Where:** `idaes_model/refrigeration.py`, `ammonia_flowsheet.py` (Canberk, 2026-11-25).
+### A6 `[DONE]` Cooling utilities for C1 and reactor loop
+- **What:** cooling water serves C1 at the 40 °C design flash, the isothermal reactor, and the intercoolers. An R717 cycle serves only the optional C1 duty below the 35 °C cooling-water limit.
+- **Why it matters:** the default flash now needs no chiller electricity; water-cooling pump/fan electricity is estimated separately.
+- **Where:** `idaes_model/cooling_utilities.py`, `refrigeration.py`, `ammonia_flowsheet.py`, `ammonia_energy.py`.
 - **Notes:**
-  - Evaporates at 5 °C and condenses at 35 °C.
-  - The reactor duty (~237 kW at 60 °C) and the 50 °C intercoolers are not assigned to any utility yet. The paper itself says cooling water would suffice for those.
-  - Cooling-water precooling of C1 has not been evaluated.
+  - Implemented 2026-11-26. Cooling-water supply is 30 °C with 5 K approach; the water-to-chiller split for colder C1 settings uses constant heat capacity. The R717 cycle retains 5 °C evaporation and 35 °C condensation. At the default 40 °C flash its circulation and power solve to zero.
+  - Allocation checks run for 10, 30, 40, and 50 °C outlets. The 40 °C duty is 100% cooling water; at 10 °C the temperature-based estimate is 50% water and 50% chiller.
+  - The full IDAES flowsheet was not rerun after this change because IDAES, Pyomo, and CoolProp are unavailable in the present environment. Chiller sizing below 35 °C needs an enthalpy-based split and heat-exchanger design.
 
 ### A7 `[DONE]` Ammonia-side energy breakdown
 - **What:** an equipment-level table of the ammonia section's duties (heating, cooling, shaft work) and electricity at realistic COPs, taken from the IDAES model.
@@ -98,14 +98,15 @@ Every item has the same fields:
   - Paper convention (sum of absolute duties) = 383 kW-eq.
   - Electrolysis is not included (see F1).
 
-### A8 `[DECIDE]` Flash B2 at 40–50 C instead of 10 C
-- **What:** the `.bkp` cools the reactor effluent to 10 C (C1, chiller) before flash B2.
+### A8 `[DONE]` Flash B2 at 40 C
+- **What:** the IDAES design default now cools reactor effluent to 40 °C before B2; the original `.bkp` specified 10 °C.
 - **Why it matters:** lowering the cooling need at the source.
 - **Where:** `ammonia_flowsheet.py` (`T_FLASH`), `ammonia_energy.py --tflash`.
 - **Notes:**
   - Tested 2026-11-25: 10 / 30 / 40 / 50 C all give 11.96 kg/h NH3. C1 duty falls 72 → 43 → 29 → 15 kW, and it can use cooling water instead of the chiller.
   - Re-checked with the temperature-dependent NH3 Henry constant (A10): NH3 lost to the purge is only 0.001 → 0.004 kg/h (0.03%) at 50 C, because the gas recycle (~1 mol/s) is tiny compared with the liquid (~130 mol/s).
-  - **Recommendation:** adopt 40–50 C. It needs a team OK because it changes the `.bkp` design basis.
+  - **Decision implemented 2026-11-26:** 40 °C is the design default; `--tflash 10` remains available for comparison. The 40 °C result in the 2026-11-25 sweep gave about 29 kW C1 duty, all assignable to cooling water with the 30 °C supply / 5 K approach assumption.
+  - The sweep used the legacy ammonia flowsheet, not the separate Ni₂P PFR. Product-rate and NH₃-recovery claims for a combined Ni₂P-plus-flash model remain open under A4; no combined-model result is implied here.
 ### A9 `[DECIDE]` Brine pre-concentration (B6): infeasible as modelled, and the single largest hidden load
 - **What:** B6 removes 6.2 t/h of water at zero energy and leaves a 38.6 wt% salt concentrate. That is above NaCl saturation (56 g NaCl per 100 g water vs ~36), so ~280 kg/h NaCl would crystallize. The feed (103 g/kg TDS) is already above the conventional RO limit, so the water removal is thermal (MVC ~24 kWh/m3, crystallizer ~35 kWh/m3; refs R7).
 - **Why it matters:** about 218 kW at the `.bkp` point, about as much as all other ammonia-section loads together.

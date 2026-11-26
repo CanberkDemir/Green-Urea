@@ -15,8 +15,8 @@ IDAES unit mapping:
     B1      (RPlug, isothermal at inlet T,
              15 tubes x 10 m x 1 m diam, liquid phase,
              reactions AMMONIA1)         -> b1 (PFR, area = 15*pi/4 m2)
-    C1      (cooler, 10 degC, 27 bar)    -> c1
-    B2      (Flash2, 10 degC, 27 bar)    -> b2
+    C1      (cooler, 40 degC, 27 bar)    -> c1
+    B2      (Flash2, 40 degC, 27 bar)    -> b2
     SPLIT1  (FSplit, 90% recycle / 10% purge) -> split1
     V1      (valve to 1 bar)             -> v1 (isenthalpic Heater, Q=0)
 
@@ -49,6 +49,7 @@ from pyomo.environ import (
 )
 from pyomo.network import Arc
 from refrigeration import add_refrigeration
+from cooling_utilities import c1_cooling_fractions, CW_ELECTRIC_FRACTION
 
 from idaes.core import FlowsheetBlock
 from idaes.models.unit_models.mixer import MomentumMixingType
@@ -86,7 +87,7 @@ P_H2_FEED = 1e5  # Pa (H2FEED: 25 degC, 1 bar)
 P_PRODUCT = 1e5  # Pa (V1 P-OUT = 1 bar)
 T_FEED = 298.15  # K  (both feeds at 25 degC)
 T_REACTOR = 333.15  # K (H1 spec / RPLUG inlet-temp isothermal spec, 60 degC)
-T_FLASH = 283.15  # K  (C1 / B2 spec, 10 degC)
+T_FLASH = 313.15  # K  (C1 / B2 design, 40 degC; original .bkp: 10 degC)
 T_INTERCOOL = 323.15  # K (MCOMPR1 stage coolers, 50 degC)
 ETA_ISENTROPIC = 0.72  # MCOMPR1 SEFF per stage
 N_STAGES = 4
@@ -359,7 +360,7 @@ def build_model(fh2_kgph=10.0, brine_kgph=None):
         if x != m.fs.b1.control_volume.length_domain.first():
             m.fs.b1.control_volume.properties[0, x].temperature.fix(T_REACTOR)
 
-    # C1 + B2: cool and flash at 10 degC, 27 bar
+    # C1 + B2: cool and flash at the selected temperature, 27 bar
     m.fs.c1.control_volume.properties_out[0].temperature.fix(T_FLASH)
     m.fs.b2.heat_duty.fix(0.0)
     m.fs.b2.deltaP.fix(0.0)
@@ -380,7 +381,11 @@ def build_model(fh2_kgph=10.0, brine_kgph=None):
         doc="Total reactor heat duty [W] (isothermal profile)")
     m.fs.Qh1 = Expression(expr=m.fs.h1.heat_duty[0])
     m.fs.Qc1 = Expression(expr=m.fs.c1.heat_duty[0])
-    add_refrigeration(m.fs, -m.fs.Qc1)
+    cw_fraction, chilled_fraction = c1_cooling_fractions(
+        T_REACTOR - 273.15, T_FLASH - 273.15)
+    m.fs.Qc1_cooling_water = Expression(expr=-m.fs.Qc1 * cw_fraction)
+    m.fs.Qc1_chilled = Expression(expr=-m.fs.Qc1 * chilled_fraction)
+    add_refrigeration(m.fs, m.fs.Qc1_chilled)
     m.fs.W_comp = Expression(
         expr=sum(getattr(m.fs, f"cmp{k}").work_mechanical[0]
                  for k in range(1, N_STAGES + 1)),
@@ -391,6 +396,12 @@ def build_model(fh2_kgph=10.0, brine_kgph=None):
         expr=sum(getattr(m.fs, f"ic{k}").heat_duty[0]
                  for k in range(1, N_STAGES)),
         doc="MCOMPR1 net heat duty [W] (intercoolers, matches Aspen QNET)")
+    m.fs.Qcooling_water = Expression(
+        expr=m.fs.Qc1_cooling_water - m.fs.Qr1 - m.fs.Qcomp,
+        doc="C1, isothermal reactor and intercooler cooling-water duty [W]")
+    m.fs.W_cooling_water = Expression(
+        expr=CW_ELECTRIC_FRACTION * m.fs.Qcooling_water,
+        doc="Estimated cooling-water pump and fan electricity [W]")
 
     s13 = m.fs.s13.properties[0]
     m.fs.nh3_product_kgph = Expression(
@@ -538,7 +549,14 @@ def _aspen_row(ft, fh2):
 
 def report(m, ft=8500.0, fh2=10.0):
     ref = m.fs.refrigeration
-    print("\nR717 refrigeration utility")
+    print("\nCooling utilities")
+    print(f"C1 cooling water: {value(m.fs.Qc1_cooling_water)/1000:.3f} kW")
+    print(f"C1 refrigeration: {value(m.fs.Qc1_chilled)/1000:.3f} kW")
+    print(f"Total cooling water (C1 + B1 + intercoolers): "
+          f"{value(m.fs.Qcooling_water)/1000:.3f} kW")
+    print(f"Cooling-water pump/fan estimate: "
+          f"{value(m.fs.W_cooling_water)/1000:.3f} kWe")
+    print("R717 refrigeration utility")
     print(f"Refrigerant circulation: {value(ref.mass_flow):.5f} kg/s")
     print(f"Evaporator cooling: {value(ref.evaporator_duty)/1000:.3f} kW")
     print(f"Compressor electricity: {value(ref.electric_power)/1000:.3f} kW")
@@ -560,6 +578,10 @@ def report(m, ft=8500.0, fh2=10.0):
     purge = m.fs.purge.properties[0]
     print(f"Purge flow         : {value(purge.flow_mol):.4f} mol/s")
 
+    if abs(T_FLASH - 283.15) > 1e-6:
+        print("\nAspen validation skipped: historical reference flash is 10 C; "
+              "this run uses the 40 C design or another flash setting.")
+        return
     row = _aspen_row(ft, fh2)
     if row is None:
         print("\n(no matching Aspen row found for validation)")

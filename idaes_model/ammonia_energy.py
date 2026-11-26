@@ -92,8 +92,7 @@ def solve_ammonia(ft=8500.0, fh2=10.0, t_flash_c=None, s16_water=None):
         # water left in the B6 concentrate [kg/h] (.bkp: 1400)
         A.S16_H2O_KGPH = s16_water
     if t_flash_c is not None:
-        # C1/B2 flash temperature (the .bkp uses 10 C). At 40-50 C the
-        # NH3 product is unchanged but C1 needs no chiller.
+        # C1/B2 flash temperature (original .bkp: 10 C; design default: 40 C).
         A.T_FLASH = t_flash_c + 273.15
     logging.disable(logging.WARNING)
     import contextlib
@@ -290,7 +289,7 @@ def main():
                     help="exclude B6 brine-concentration energy (as in the "
                          "paper and the .bkp)")
     ap.add_argument("--tflash", type=float, default=None,
-                    help="C1/B2 flash temperature [C] (default: .bkp 10 C)")
+                    help="C1/B2 flash temperature [C] (default: design 40 C)")
     a = ap.parse_args()
 
     m = solve_ammonia(fh2=a.fh2, t_flash_c=a.tflash, s16_water=a.s16water)
@@ -313,6 +312,8 @@ def main():
     print(f"  {'H2 compressor work':28s} {'':4s} {'':19s} {w_comp:9.1f} kW")
     print(f"  {'R717 chiller on C1 (Canberk)':28s} COP {cop_ch:.2f} -> "
           f"{value(fs.refrigeration.electric_power) / 1e3:.1f} kWe")
+    print(f"  C1 cooling water: {value(fs.Qc1_cooling_water) / 1e3:.1f} kW; "
+          f"R717 cooling: {value(fs.Qc1_chilled) / 1e3:.1f} kW")
     paper = sum(s.duty_kw for s in base) + w_comp
     print(f"  paper convention (sum |duties|, COP 1): {paper:.1f} kW-eq")
 
