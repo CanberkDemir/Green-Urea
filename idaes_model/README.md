@@ -16,6 +16,8 @@ flash separation with gas recycle, product let-down).
 | `properties/enrtl_ammonia.py` | Property package (3 variants from one `get_prop(phases)` call) |
 | `reactions/ammonia_reactions.py` | The AMMONIA1 kinetic network, replicated verbatim from the `.bkp` |
 | `test_kinetics.py` | Standalone kinetics verification (ODE branching + IDAES unit consistency) |
+| `h2_transfer_reactor.py` / `H2_TRANSFER.md` | Separate gas-liquid-catalyst H2 transport screening model; no Aspen kinetics or fitted NH3 yield |
+| `ni2p_pfr.py` | Provisional Ni₂P packed-bed PFR with batch-derived nitrate disappearance, explicit H₂ transfer, and adjustable catalyst activity |
 
 ## Running
 
