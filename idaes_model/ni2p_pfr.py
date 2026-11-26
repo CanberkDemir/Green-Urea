@@ -15,9 +15,11 @@ from math import expm1, isfinite, pi
 if __package__:
     from .ni2p_dossier import hydrogen_equilibrium, batch_calibration
     from .h2_transfer_reactor import MW_H2, MW_NH3, MW_NO3
+    from . import brine_electrolyte as BE
 else:
     from ni2p_dossier import hydrogen_equilibrium, batch_calibration
     from h2_transfer_reactor import MW_H2, MW_NH3, MW_NO3
+    import brine_electrolyte as BE
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,9 @@ class Inputs:
     kla_s: float = 0.001  # gas/liquid transfer, per liquid volume; assumed
     ksa_s: float = 0.01  # liquid/catalyst transfer, per liquid volume; assumed
     steps: int = 4000
+    sodium_kgph: float = 330.565
+    sulfate_kgph: float = 15.895
+    ph_target: float = 2.0  # Wei et al. (2020) initial pH; held by HCl dosing
 
 
 @dataclass(frozen=True)
@@ -66,6 +71,10 @@ class Result:
     surface_h2_out_mol_m3: float
     h2_balance_error_mol_s: float
     nitrogen_balance_error_mol_s: float
+    hcl_ph_set_kgph: float = 0.0     # acid to bring the neutral feed to ph_target
+    hcl_reaction_kgph: float = 0.0   # acid consumed by NO3- -> NH4+/N2
+    hcl_total_kgph: float = 0.0
+    nh4_out_kgph: float = 0.0        # ammonia leaves as NH4+ at ph_target
 
 
 def run(p: Inputs) -> Result:
@@ -169,7 +178,20 @@ def run(p: Inputs) -> Result:
                   c_no3 * q_liq * MW_NO3 * 3600,
                   gas_h2 * MW_H2 * 3600, c_h2 * q_liq * MW_H2 * 3600,
                   reacted_h2 * MW_H2 * 3600, gas_n2, acid_equivalents,
-                  surface_h2, gas_h2_in - h2_out - reacted_h2, n_in - n_out)
+                  surface_h2, gas_h2_in - h2_out - reacted_h2, n_in - n_out,
+                  *_hcl(p, acid_equivalents), c_nh3 * q_liq * BE.MW["NH4+"] * 3600)
+
+
+def _hcl(p: Inputs, acid_equivalents_mol_s: float):
+    """HCl dose (A4/A5): set the feed pH with the Pitzer brine model, then
+    replace the protons the reaction consumes. Returns kg/h (set, rxn, total)."""
+    water, ions = BE.kgph_to_mol({"H2O": p.water_kgph, "Na+": p.sodium_kgph,
+                                  "Cl-": p.chloride_kgph, "NO3-": p.nitrate_kgph,
+                                  "SO4-2": p.sulfate_kgph})
+    set_mol_h = max(BE.acid_base_dose(water, ions, p.ph_target, p.temperature_k), 0.0)
+    to_kg = BE.MW["HCl"] / 1000
+    rxn = acid_equivalents_mol_s * 3600 * to_kg
+    return set_mol_h * to_kg, rxn, set_mol_h * to_kg + rxn
 
 
 def main() -> None:
@@ -192,6 +214,7 @@ def main() -> None:
     print(f"NH3 product                {r.nh3_kgph:.3f} kg/h")
     print(f"H2 gas / dissolved out     {r.h2_gas_out_kgph:.3f} / {r.h2_liquid_out_kgph:.3f} kg/h")
     print(f"H2 reacted                 {r.h2_consumed_kgph:.3f} kg/h")
+    print(f"HCl pH set / reaction / total {r.hcl_ph_set_kgph:.2f} / {r.hcl_reaction_kgph:.2f} / {r.hcl_total_kgph:.2f} kg/h (pH {p.ph_target})")
     print(f"H2 / N balance residual    {r.h2_balance_error_mol_s:.2e} / {r.nitrogen_balance_error_mol_s:.2e} mol/s")
 
 
