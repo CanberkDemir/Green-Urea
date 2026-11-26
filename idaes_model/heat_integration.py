@@ -63,19 +63,28 @@ class PinchResult:
 
     def cold_below(self, t_real):
         """Cold utility that must be removed below real temperature
-        t_real (e.g. 30 C cooling water): read off the grand composite
-        curve at the corresponding shifted temperature (hot streams are
-        shifted down by dT_min/2)."""
+        t_real (e.g. 35 C, the lowest a cooling-water cooler can reach).
+
+        The GCC value at a shifted temperature T is the heat cascading
+        down across T. Below the pinch that is surplus released ABOVE T,
+        which a utility at T can take; what must go below T is the surplus
+        released below it: q_cold_min - min(GCC at or below T).
+        (Before 2026-11-26 this returned GCC(T) itself - the wrong side.)"""
         ts = t_real - self.dt_min / 2.0
-        return max(_interp(self.gcc, ts), 0.0) if ts < self.t_pinch_shifted \
-            else 0.0
+        if ts >= self.t_pinch_shifted:
+            return self.q_cold_min
+        lows = [q for t, q in self.gcc if t <= ts] + [_interp(self.gcc, ts)]
+        return max(self.q_cold_min - min(lows), 0.0)
 
     def hot_above(self, t_real):
-        """Hot utility that must be supplied above real temperature
-        t_real (cold streams are shifted up by dT_min/2)."""
+        """Hot utility that must be supplied above real temperature t_real:
+        q_hot_min - min(GCC at or above T) (same correction as
+        cold_below)."""
         ts = t_real + self.dt_min / 2.0
-        return max(_interp(self.gcc, ts), 0.0) if ts > self.t_pinch_shifted \
-            else 0.0
+        if ts <= self.t_pinch_shifted:
+            return self.q_hot_min
+        highs = [q for t, q in self.gcc if t >= ts] + [_interp(self.gcc, ts)]
+        return max(self.q_hot_min - min(highs), 0.0)
 
     def summary(self):
         return (f"dT_min = {self.dt_min:.0f} K | no integration: hot "

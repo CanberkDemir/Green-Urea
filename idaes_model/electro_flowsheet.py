@@ -45,6 +45,7 @@ from idaes.models.unit_models import (Feed, Flash, Heater,  # noqa: E402
                                       StoichiometricReactor)
 
 import electro_no3rr as EN  # noqa: E402
+import solver_path  # noqa: E402  (Ipopt 3.14 needed here too)
 import nh3_stripper as NS  # noqa: E402
 from properties.enrtl_ammonia import get_prop  # noqa: E402
 
@@ -117,6 +118,11 @@ def build(case="central", stages=4, conversion=0.95):
 
 
 def solve(m):
+    with solver_path.ipopt314():
+        return _solve(m)
+
+
+def _solve(m):
     fs = m.fs
     s = get_solver("ipopt", options=_OPT)
     with contextlib.redirect_stdout(io.StringIO()):
@@ -161,6 +167,34 @@ def solve(m):
     return m
 
 
+def rectifier_streams(nh3_kgph, w_kmolph):
+    """15 bar rectifier to 99.5 mol% NH3 (Underwood Rmin, R = 1.5 Rmin)."""
+    import ammonia_energy as AE
+    from heat_integration import Stream
+    n_nh3 = nh3_kgph / 17.031
+    x_f = n_nh3 / (n_nh3 + w_kmolph)
+    a = AE.ALPHA_RECT
+    r_min = (1 / (a - 1)) * (AE.X_D / x_f - a * (1 - AE.X_D) / (1 - x_f))
+    r = AE.R_FACTOR * max(r_min, 0.1)
+    q_cond = (r + 1) * nh3_kgph * AE.DH_NH3_40C / 3600.0
+    w_kg = w_kmolph * 18.015
+    q_reb = q_cond + w_kg * AE.CP_WATER * (AE.P_RECT_T_BOT
+                                           - AE.T_RECT_FEED) / 3600
+    st = [
+        Stream("rectifier feed preheat", 40.0, AE.T_RECT_FEED,
+               (w_kg + nh3_kgph) * AE.CP_WATER * (AE.T_RECT_FEED - 40.0)
+               / 3600, section="recovery"),
+        Stream("rectifier reboiler (15 bar)", AE.P_RECT_T_BOT,
+               AE.P_RECT_T_BOT + 0.1, q_reb, section="recovery"),
+        Stream("rectifier condenser (NH3, 40 C)", AE.T_RECT_COND + 0.1,
+               AE.T_RECT_COND, q_cond, section="recovery"),
+        Stream("rectifier bottoms cooler", AE.P_RECT_T_BOT, AE.T_CW + 5.0,
+               w_kg * AE.CP_WATER * (AE.P_RECT_T_BOT - AE.T_CW - 5.0) / 3600,
+               section="recovery"),
+    ]
+    return st, {"rectifier R": r, "rectifier feed NH3 [mol%]": 100 * x_f}
+
+
 class _LiqState:
     """Adapter: a port looks like a state block to nh3_stripper.build_column."""
     def __init__(self, port):
@@ -171,8 +205,21 @@ class _LiqState:
                                for j in COMPS}
 
 
-def results(m):
-    """Energy streams and numbers for pinch / plant_energy."""
+P_MVR_BAR = 0.25     # overhead recompressed to here: condenses at ~60 C
+ETA_MVR = 0.75
+
+
+def mvr_work_kw(n_mol_s, p_in_bar, p_out_bar, t_in_k, k=1.33):
+    r = p_out_bar / p_in_bar
+    return n_mol_s * k / (k - 1) * 8.314 * t_in_k * (r ** ((k - 1) / k) - 1)         / ETA_MVR / 1e3
+
+
+def results(m, mvr=False):
+    """Energy streams and numbers for pinch / plant_energy.
+
+    mvr=True: the stripper overhead (0.08 bar, ~40 C) is recompressed to
+    0.25 bar so it condenses at ~60 C instead of being chilled to 10 C; its
+    heat then serves the 42 C reboiler through the pinch match."""
     import ammonia_energy as AE
     from heat_integration import Stream
     fs, cell = m.fs, m.cell_design
@@ -205,18 +252,22 @@ def results(m):
                section="recovery"),
         Stream("stripper reboiler", t_reb, t_reb + 0.1, q_reb,
                section="recovery"),
-        Stream("stripper overhead condenser", t_b - 2.0, 10.0, q_ovh,
-               section="recovery"),
+        (Stream("stripper overhead condenser (after MVR, 0.25 bar)",
+                NS.water_tsat(P_MVR_BAR) - 273.15 - 2.0,
+                NS.water_tsat(P_MVR_BAR) - 273.15 - 12.0, q_ovh,
+                section="recovery") if mvr else
+         Stream("stripper overhead condenser", t_b - 2.0, 10.0, q_ovh,
+                section="recovery")),
         Stream("stripper bottoms cooler", t_reb, 30.0,
                m_bot * AE.CP_BRINE * (t_reb - 30.0) / 3600,
                section="recovery"),
     ]
-    # rectifier to anhydrous NH3 (shortcut, same as ammonia_energy S2 tail)
-    rs, r_shaft, r_info = AE.recovery_streams("S2", nh3_kgph,
-                                              EN.BRINE_KGPH["H2O"],
-                                              sum(EN.BRINE_KGPH.values()),
-                                              65.0)
-    streams += [s_ for s_ in rs if s_.name.startswith("rectifier")]
+    # rectifier to anhydrous NH3: shortcut (ammonia_energy S2 tail) fed with
+    # the RIGOROUS stripper overhead (NH3 + water flows)
+    rs, r_info = rectifier_streams(nh3_kgph, h2o_top * 3.6)
+    streams += rs
+    r_shaft = mvr_work_kw(value(top.flow_mol[0]), P_STRIP_BAR, P_MVR_BAR,
+                          t_b + 273.15) if mvr else 0.0
     out = {
         "NH3 product [kg/h]": nh3_kgph * 1.0,
         "NH3 lost in HER gas [kg/h]": nh3_lost_gas,
@@ -229,6 +280,8 @@ def results(m):
         "stripper reboiler [kW]": q_reb, "stripper T bottom [C]": t_reb,
         "stripper overhead NH3 [mol%]": 100 * nh3_top / (nh3_top + h2o_top),
         "feed preheat [kW]": q_pre,
+        "rectifier reflux ratio": r_info["rectifier R"],
+        "overhead MVR [kW]": r_shaft,
     }
     return streams, cell["power_kw"] + r_shaft, out
 
@@ -236,10 +289,12 @@ def results(m):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--case", default="central", choices=list(EN.CASES))
+    ap.add_argument("--mvr", action="store_true",
+                    help="recompress the stripper overhead (see results())")
     a = ap.parse_args()
     logging.disable(logging.WARNING)
     m = solve(build(a.case))
-    streams, shaft, out = results(m)
+    streams, shaft, out = results(m, a.mvr)
     print(f"=== electrochemical NH3 section ({a.case}) ===")
     for k, v in out.items():
         print(f"  {k:36s} {v:10.3f}")
