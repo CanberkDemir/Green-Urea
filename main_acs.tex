@@ -1,0 +1,1385 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Manuscript prepared from the ACS "template" model document
+%% (J. Wright, CC0). The ACS do not typeset accepted articles with
+%% LaTeX, so no journal-specific class is required and this file does
+%% not attempt to reproduce the typeset journal layout.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[letterpaper]{article}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Font setup - delete if you are using LuaLaTeX
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[T1]{fontenc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Margins and line spacing
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{geometry}
+\geometry{margin = 1in}
+\usepackage{setspace}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Reference support (biblatex with the ACS chemistry style)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[backend = biber, style = chem-acs]{biblatex}
+\addbibresource{acs-main.bib}
+\usepackage{xurl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Graphic inclusion and scheme support
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{graphicx}
+\usepackage{float}
+\newfloat{scheme}{htbp}{los}
+\floatname{scheme}{Scheme}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Common support packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[version = 4]{mhchem}   % formulas via \ce{}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\sisetup{group-separator = {,}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Many journals require that sections are unnumbered
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setcounter{secnumdepth}{-1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Author and title data
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{authblk}
+\author[1,2]{Sunoy Sanyal*}
+\author[1,3]{Canberk Demir}
+\author[1]{Ali Ozan Aky\"uz}
+\author[1]{Sarp D\"onerta\c{s}}
+\affil[1]{Department of Chemical and Biological Engineering, Ko\c{c} University, Istanbul, T\"urkiye}
+\affil[2]{Department of Industrial Engineering, Ko\c{c} University, Istanbul, T\"urkiye}
+\affil[3]{Department of Chemistry, Ko\c{c} University, Istanbul, T\"urkiye}
+
+\title{Closing the Carbon and Nitrogen Loop through Urea Production
+  from Nitrate-Rich Wastewater}
+% Use the \date command for email address(es) of corresponding authors
+\date{*Email: sunoysanyal@gmail.com}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The United Kingdom faces a coupled environmental challenge in managing
+nitrate-rich wastewater and reducing carbon emissions. This study
+proposes and evaluates a green urea plant that converts nitrate-rich
+brine from Keldgate Water Treatment Works into urea using green
+hydrogen and captured biogenic \ce{CO2}. The aim is to close the
+nitrogen and carbon loops within a single process and thereby address
+both environmental problems simultaneously. The process is modeled
+through a combination of mathematically formulated PEM electrolysis,
+ASPEN PLUS\textsuperscript{\textregistered} simulation of
+Pd--Cu-catalyzed nitrate hydrogenation, ammonia recovery, intermittent
+ammonia production, and Bosch--Meiser urea synthesis within a
+surrogate-assisted mixed-integer planning framework that accounts for
+hourly wind variability, grid-use constraints, and storage design. In
+the supporting models, the PEM electrolyzer is assigned a Faradaic
+efficiency of $0.98$ and a specific energy demand of
+$50~\mathrm{kWh\,kg^{-1}_{H_2}}$. The ammonia-recovery step uses tuned
+nitrate-reduction kinetics that reproduce ammonia selectivities of
+approximately $85$--$92\%$, together with a membrane-based separation
+energy of $7.1~\mathrm{kWh\,kg^{-1}_{N}}$. The unit-level ReLU
+surrogates reproduce the simulated plant responses with coefficients
+of determination between $0.83$ and $0.999$, with the urea-unit
+electricity demand captured at $R^2 = 0.999$. For the small,
+DEF-oriented case-study scale of approximately
+$125~\mathrm{kg\,d^{-1}}$ urea, all four grid-integration
+policies---unrestricted grid, $10\%$-grid, $5\%$-grid, and
+wind-only---converge to essentially the same optimal design and
+cost: a wind capacity of $1.8$--$1.9$~MW, a $490$~kW electrolyzer, a
+$3.2$--$3.5$~MWh battery, and an annualized cost of
+\pounds$14.56$--$14.57~\mathrm{million\,y^{-1}}$. Dedicated wind
+undercuts grid electricity so decisively that the optimizer purchases
+no grid power even when imports are unrestricted, making full
+renewable autonomy effectively free at this scale. Intermittency is
+absorbed through moderate wind overbuilding with $14$--$16\%$
+curtailment, battery and ammonia-inventory buffering, and
+intermittent ammonia-section operation at $81\%$ availability, while
+fixed plant capital accounts for more than $98\%$ of the total cost.
+The resulting break-even urea price of approximately
+\pounds$404~\mathrm{kg^{-1}}$, against a market price of
+\pounds$1.83~\mathrm{kg^{-1}}$, shows that economic viability is
+limited by plant scale rather than by renewable intermittency. Within
+the gate-to-gate boundary, with the dedicated wind supply
+carbon-neutral at the point of use, the process is a net consumer of
+\ce{CO2} at $-0.73~\mathrm{kg_{CO_2}\,kg^{-1}}$ in every case;
+including life-cycle electricity intensities as a sensitivity yields
+$+1.6~\mathrm{kg_{CO_2}\,kg^{-1}}$, comparable to conventional
+production, which identifies the specific electricity demand as the
+key maturation lever. These results indicate that nitrate-to-urea
+valorization is technically feasible and compatible with fully
+islanded wind operation, but that its economics call for feedstock
+aggregation toward larger scales or remuneration of the
+nitrate-removal service itself, rather than support directed at the
+renewable-energy supply.
+\end{abstract}
+
+\section*{Keywords}
+
+green urea; nitrate valorization; wastewater; surrogate modeling;
+mixed-integer programming; renewable intermittency; carbon utilization
+
+\section*{Abbreviations}
+
+BEP, break-even price; CAPEX, capital expenditure; CRF, capital
+recovery factor; DEF, diesel exhaust fluid; FE, Faradaic efficiency;
+IX, ion exchange; LCA, life-cycle assessment; MILP, mixed-integer
+linear programming; NPW, net present worth; OPEX, operating
+expenditure; PEM, proton-exchange membrane; ReLU, rectified linear
+unit; SCR, selective catalytic reduction; WTW, water treatment works.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Main text
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+
+The transition toward sustainable chemical manufacturing has
+intensified research into alternative nitrogen management strategies
+that reduce both environmental impact and reliance on fossil
+resources. Conventional urea production is intrinsically linked to
+ammonia synthesis via steam methane reforming, a process that is both
+energy-intensive and a major contributor to global \ce{CO2}
+emissions. A review by Ghavam et al.\ reports a carbon footprint of
+2.16~kg\,\ce{CO2}-eq per kg \ce{NH3} for the Haber--Bosch process and
+an energy demand of 30~GJ per tonne \ce{NH3}, both of which place a
+substantial burden on the environment and the energy system
+\cite{Ghavam2021SustainableAmmonia}. In response, emerging process
+concepts focus on decarbonizing hydrogen production through water
+electrolysis and integrating carbon capture, thereby enabling
+lower-emission synthesis routes for nitrogen-based chemicals.
+
+Nitrate contamination in water bodies, primarily driven by
+agricultural activities, has become a significant environmental
+concern. Globally, shallow groundwater in agricultural areas often
+exceeds $10\,\mathrm{mg\,L^{-1}}\;\mathrm{NO_3^{-}{-}N}$
+\cite{Nolan2006Nitrate}, creating a particular challenge for the UK,
+where groundwater is an important source of drinking water. Water
+treatment facilities increasingly employ ion-exchange processes to
+remove nitrate from drinking water, generating concentrated
+nitrate-rich brine streams as a secondary waste. These streams,
+exemplified by UK installations such as Keldgate Water Treatment
+Works, contain substantial nitrate concentrations and represent a
+potentially valuable nitrogen resource rather than solely a disposal
+challenge. The conversion of nitrate-rich wastewater into useful
+chemical products has emerged as a promising strategy that
+simultaneously addresses pollution mitigation and resource
+recovery. This study focuses on the conversion of such waste streams
+into urea through integrated chemical design.
+
+The importance of this work lies in its potential to address multiple
+challenges simultaneously. First, it provides a pathway for the
+conversion of nitrate waste, transforming an environmentally
+problematic byproduct into a valuable chemical commodity. In doing
+so, it contributes to closing the anthropogenic nitrogen loop,
+whereby reactive nitrogen discharged into the environment is
+recovered and reintegrated into the chemical value chain. This
+approach aligns closely with circular economy principles, which
+emphasize resource recovery, waste minimization, and the
+recirculation of materials within industrial systems. Second, by
+incorporating hydrogen produced via water electrolysis, the proposed
+process contributes to the reduction of greenhouse gas emissions
+associated with conventional nitrogen chemical production. Third, the
+study explores the design and operation of small-scale, distributed
+chemical systems, which represent a departure from traditional
+large-scale centralized production and may offer advantages in terms
+of resource efficiency and process integration.
+
+The main contributions of this work are threefold. It develops a
+process design framework based on real wastewater data, evaluates the
+suitability of different technological pathways for nitrate-to-urea
+conversion, and assesses the economic implications of operating at
+sub-industrial scale. In doing so, the study provides insights into
+the opportunities and limitations of integrating wastewater treatment
+with sustainable, circular chemical manufacturing systems.
+
+\section{Process Concept and Integration in UK Electrical and
+  Chemical Networks}
+
+\subsection{Choice of Key Chemical}
+
+Urea is selected as the target product due to its global significance
+as a nitrogen carrier and its central role in fertilizer
+production. As one of the highest-volume chemicals in the world
+\cite{IFASTAT_UreaAtAGlance}, urea serves as a critical link between
+closing the nitrogen loop and agricultural productivity. Moreover,
+its synthesis from ammonia and carbon dioxide provides a direct route
+for carbon utilization, aligning with broader decarbonization
+objectives.
+
+From a process integration perspective, urea production offers a
+compelling pathway for coupling nitrate recovery with green hydrogen
+utilization. Nitrate-rich waste streams can be converted to ammonia
+via catalytic hydrogenation, after which conventional urea synthesis
+chemistry can be applied. At the scale of typical water treatment
+facilities, the nitrate content of waste brine streams is sufficient
+to support continuous, albeit small-scale, urea production on the
+order of approximately one tonne per day.
+
+Despite the maturity of urea synthesis at industrial scale, its
+implementation at smaller scales introduces techno-economic
+challenges. These challenges---particularly those associated with
+integrating ammonia and urea synthesis and with the high capital
+intensity of the process---motivate further investigation into
+process design and optimization.
+
+The following subsections outline the integration of this process
+into the United Kingdom's network of chemical production, waste
+feedstock, and renewable electricity. Key parameters such as the
+waste source, carbon dioxide source, and product destination are
+considered first. Afterwards, a renewable-energy source is identified
+to finalize the proposed site location.
+
+\subsection{Source of Waste}
+% THIS PART WAS WRITTEN BY CANBERK DO NOT DELETE
+In this work, the waste stream is chosen as nitrate-rich brine
+generated within the urban water-supply network. At Keldgate Water
+Treatment Works (WTW) in Yorkshire, UK, drinking water is treated
+using ion-exchange (IX) columns. When these IX columns are
+regenerated, a nitrate-rich brine is produced. This brine contains
+high concentrations of chlorine together with smaller amounts of
+phosphate, sulphate, and nitrate ions. Among these species, nitrate
+is of particular interest because it can be hydrogenated to form
+ammonia. The Keldgate plant has a total treatment capacity of
+approximately 90~ML\,day$^{-1}$, with a nitrate-removal sidestream
+of up to 33~ML\,day$^{-1}$, achieving treated nitrate
+concentrations below 5~mg\,L$^{-1}$. Based on reported
+operating data \cite{Corrigan2010} and mass-balance estimates, this
+corresponds to a brine flowrate in the range of
+180--450~m$^3$\,day$^{-1}$, with an average design basis of
+207~m$^3$\,day$^{-1}$. From the data provided by Keldgate
+WTW, the nitrate concentration in the brine is estimated to be
+5~g\,L$^{-1}$. The design basis for Keldgate WTW corresponds to
+a nitrate recovery rate of approximately 1.9~t\,day$^{-1}$, which
+defines the scale of the plant discussed in this paper.
+
+\subsection{Destination of Product}
+The primary product from this process is intended for use as diesel
+exhaust fluid (DEF, AUS32), a 33.3~wt\% aqueous urea solution
+employed in selective catalytic reduction (SCR) systems for the
+abatement of nitrogen oxide (NO$_x$) emissions from diesel
+engines. Within the UK, DEF represents a well-established and growing
+market, driven by increasingly stringent emissions regulations in
+both on-road and off-road transport sectors \cite{Koebel2000}. At the
+production scale considered in this work (sub-tonne-per-day urea
+output), direct entry into bulk fertilizer markets is economically
+unfavorable because the process does not benefit from large-scale
+economies. In contrast, DEF is a higher-value product for which
+smaller, decentralized production units may be competitive,
+particularly when integrated with local supply chains. The production
+of DEF from nitrate-derived urea therefore provides a viable pathway
+for valorizing waste streams while supplying a product with clear
+environmental functionality.
+
+\subsection{Source of Renewables}
+In addition to feedstock availability, another critical factor is the
+sourcing of low-carbon electricity, particularly for the
+electricity-intensive hydrogen-production step via electrolysis,
+which dominates the process energy demand. This requires careful
+consideration of an appropriate power source. In line with the energy
+requirements of the process, the UK is an attractive location because
+it hosts some of the world's largest offshore wind facilities in the
+North Sea. The Hornsea~2 offshore wind farm has a total capacity of
+1.32~GW, provided by 165 turbines of 8~MW each
+\cite{OrstedHornsea22026}. Assuming that a portion of this capacity
+can be reserved for the present process, the estimated total capital
+cost of the facility (\pounds 1.1412~billion)
+\cite{OfgemHornsea22023} can be normalized by the installed capacity
+of 1320~MW, yielding a specific capital cost of approximately
+\pounds 864{,}000 per MW. Applying this value to the wind-capacity
+requirement that arises in the case studies (approximately 1.9~MW)
+gives an estimated installation cost of about \pounds 1.6~million.
+
+\subsection{Source of Carbon Dioxide}
+A critical feedstock for the process is \ce{CO2}, which is consumed
+in urea synthesis via the Bosch--Meiser process. This approach
+supports UK decarbonization objectives by simultaneously closing both
+the nitrogen and carbon loops within the process. Nitrogen is
+recovered from wastewater in the form of nitrate and converted into
+ammonia and subsequently urea, thereby avoiding its release to the
+environment and reducing reliance on conventional nitrogen fixation
+routes. In parallel, the urea-synthesis step incorporates carbon
+dioxide as a reactant, enabling partial utilization of captured or
+waste \ce{CO2} streams. When combined with low-carbon hydrogen, this
+integrated pathway offers the potential for significantly lower
+life-cycle carbon emissions than conventional fossil-based urea
+production. The proposed process uses biogenic \ce{CO2} derived from
+anaerobic digestion at the Sandhill Biogas facility, which has a
+capacity of 4{,}000~t\ce{CO2}/year, or about 11~t/day
+\cite{DESNZTeessideCCUS2025}. Compared with sourcing \ce{CO2} from
+industrial flue gases, this approach recycles carbon already present
+in the short-term carbon cycle. It is also advantageous because
+\ce{CO2} streams from biogas upgrading are generally available at
+higher purity, reducing the need for extensive pretreatment. The
+proposed \ce{CO2} demand for the process is 0.78~t/day. The Sandhill
+Biogas facility is located approximately 23~km from the proposed
+site, which further supports its suitability as a feedstock source,
+as its permit schedules explicitly incorporate \ce{CO2} conditioning
+and liquefaction operations, including capture, compression, cooling,
+and condensation, with the resulting liquid \ce{CO2} removed off-site
+by tanker transport, making small offtakes feasible.
+
+\subsection{Choice of Location}
+An optimal UK site should satisfy several constraints, including
+proximity to nitrate-rich wastewater brine, viable access to offshore
+wind infrastructure, location within a region with suitable wind and
+climate data, and integration with industrial \ce{CO2} transport
+infrastructure. When these constraints are considered, the East
+Yorkshire/Humber industrial region emerges as an appropriate
+candidate site. The region is attractive because of its proximity to
+Keldgate WTW, which provides access to nitrate-rich brine feedstock,
+its proximity to Hornsea~2 as a renewable-energy source, and its
+viable access to \ce{CO2} from the Sandhill Biogas facility via
+tanker transport. In addition, its location within an established
+industrial cluster provides strong grid connectivity and access to
+supporting infrastructure.
+
+\section{Design and Simulation of the Integrated Plant}
+
+\subsection{Overall Plant Design}
+% WRITTEN BY CANBERK
+To integrate the Haber--Bosch and Bosch--Meiser process elements, a
+combination of simulation, mathematical modeling, and Python-based
+integration was used. The Bosch--Meiser process was modeled entirely
+in ASPEN with slight modifications based on the patent described by
+Pustjens \cite{Pustjens2018}. The design of the green ammonia plant
+combined mathematical modeling and simulation. The electrolyzer block
+and stripping loop were modeled mathematically, whereas the reaction
+loop was designed in ASPEN. The overall green ammonia plant was then
+embedded in the optimization step through integration of the ASPEN
+simulation, mathematically modeled blocks, and intermittency
+units. The ELECNRTL fluid package was used for the green ammonia
+plant, whereas the SR-POLAR fluid package was used for the
+Bosch--Meiser process. The overall process can be divided into five
+main parts: the electrolyzer block, ammonia catalytic hydrogenation,
+ammonia separation, the urea synthesis loop, the urea separation
+section, and intermittency considerations.
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{prism-uploads/prodScheme.png}
+\caption{Simplified process flow diagram of the plant design showing
+  the main subprocesses.}
+\label{fig:prod_scheme}
+\end{figure}
+
+\subsection{Electrolyzer Block}
+In this work, the electrolyzer block was separated from the main
+simulation because its scale and intermittent operation are modeled
+independently of the green ammonia plant. The mathematical model of
+the electrolyzer block was formulated with explicit consideration of
+water use and energy demand. Stoichiometry was defined from the
+overall reaction, and separate anodic and cathodic reactions were not
+considered. In addition, the Faradaic efficiency (FE) of the cell was
+incorporated into the mass calculation to determine the actual water
+requirement needed to satisfy the hydrogen demand.
+
+\begin{equation}
+\ce{H2O(l) -> H2(g) + 1/2 O2(g)}
+\end{equation}
+
+\begin{equation}
+m_{\ce{H2},\mathrm{actual}} = \frac{m_{\ce{H2},\mathrm{stoich}}}{\eta_F}
+\end{equation}
+
+\begin{equation}
+m_{\ce{H2O},\mathrm{actual}}
+  = \frac{0.5\,m_{\ce{O2},\mathrm{stoich}}}{\eta_F}
+  = \frac{m_{\ce{H2},\mathrm{stoich}}}{\eta_F}
+\end{equation}
+
+\noindent For the energy demand, a specific-energy scalar was
+introduced to convert mass flow rate into electricity demand.
+
+\begin{equation}
+E = \frac{m_{\ce{H2}} \cdot e_{\mathrm{spec}}}{\eta_F}
+\end{equation}
+
+\noindent The screening of water electrolyzers and the derivation of
+$e_{\mathrm{spec}}$ are provided in the Supporting Information. After
+screening, FE was taken as 0.98 based on the work of Rashid et
+al.\ \cite{Rashid2015}, and $e_{\mathrm{spec}}$ was calculated as
+$50\,\mathrm{kWh}\,\mathrm{kg}_{\ce{H2}}^{-1}$.
+
+\subsection{Ammonia Catalytic Hydrogenation}
+The nitrate hydrogenation reactor is modeled using a lumped
+pseudo-first-order kinetic approach with the catalyst chosen as the
+industrial standard Pd--Cu. Thus, a reaction network was introduced
+and tuned for the operation of the Pd--Cu catalyst at 60~$^\circ$C
+and 1~bar. In this tuning the work of Zhang et
+al.\ \cite{Pd-Cu_experimental} was taken as a basis and \ce{NH3}
+selectivity of 90\% and \ce{NO3-} conversion of 100\% was aimed. The
+proposed kinetic modeling is as follows:
+
+\begin{align}
+\ce{NO3- + H2 &-> NO2- + H2O} \\
+\ce{NO2- + 3H2 &-> NH3 + 2H2O} \\
+\ce{2NO3- + 5H2 &-> N2 + 6H2O} \\
+\ce{2NO2- + 3H2 &-> N2 + 4H2O}
+\end{align}
+
+\begin{equation}
+\begin{aligned}
+r_1 &= k_1 C_{\ce{NO3-}} & \qquad r_2 &= k_2 C_{\ce{NO2-}} \\
+r_3 &= k_3 C_{\ce{NO3-}} & \qquad r_4 &= k_4 C_{\ce{NO2-}}
+\end{aligned}
+\end{equation}
+
+\noindent This formulation enables the inclusion of competing pathways
+and side reactions. The reaction constants were then tuned by trial
+and error, and the final values are reported in the Supporting
+Information. To account for intermittent reactor operation, the
+autothermal reactor system proposed by Cheema and Krewer
+\cite{Cheema2018} was adopted. In the ASPEN simulations, this
+autothermal reactor system was modeled as an RPLUG reactor.
+
+\subsection{Ammonia Separation}
+Ammonia produced from nitrate hydrogenation exits the reactor as an
+aqueous solution (hydrous ammonia), requiring separation and
+purification prior to urea synthesis. Because ammonia is highly
+miscible in water, this step presents a separation challenge. In
+addition, the relatively small process scale limits the practicality
+of rigorous stripping system modeling. Accordingly, an alternative
+method was adopted: a novel gas stripping membrane reported by Iddya
+et al.\ \cite{Iddya2020}. This method has the advantage of separating
+ammonia from saline water without side reactions or extreme heat
+duties. Following the work of Iddya et al., the specific energy
+demand for ammonia recovery was calculated as:
+
+\begin{equation}
+Q_S = \dot m_{\ce{NH3}} \cdot e_{\mathrm{membrane}}
+\end{equation}
+
+\noindent where $e_{\mathrm{membrane}}$ is specified as
+7.1~kWh\,kg$^{-1}$ of nitrogen \cite{Iddya2020}.
+
+\subsection{Urea Reaction}
+% WRITTEN BY CANBERK
+Urea synthesis is carried out via the conventional reaction between
+ammonia and carbon dioxide, proceeding through ammonium carbamate
+formation followed by dehydration to urea.
+
+\begin{equation}
+\ce{2NH3 + CO2 <=> NH2COONH4}
+\end{equation}
+
+\begin{equation}
+\ce{NH2COONH4 <=> NH2CONH2 + H2O}
+\end{equation}
+
+\noindent The first reaction is fast and exothermic, whereas the
+second is slower and endothermic and is therefore both rate and
+equilibrium limiting. To favor carbamate formation, the RPLUG reactor
+block operates at 200~$^\circ$C and 200~bar, consistent with
+industrial practice. Low-pressure decomposition reactors at 20~bar
+and 2~bar are then modeled with RSTOIC blocks to decompose excess
+carbamate into carbon dioxide and ammonia. Within the reaction loop,
+the decomposed gases are recycled back to the reactor. The reaction
+kinetics were modeled as surrogates to match the conversion presented
+in the work of Pustjens \cite{Pustjens2018}. Again, a lumped
+first-order kinetic reaction network was used and tuned by trial and
+error. The proposed reaction network consists of four elementary
+reactions, representing the two forward and two backward
+reactions. The finalized kinetic values can be found in the
+Supporting Information.
+
+\begin{align}
+\ce{2NH3 + CO2 &-> NH2COONH4} \\
+\ce{NH2COONH4 &-> 2NH3 + CO2} \\
+\ce{NH2COONH4 &-> NH2CONH2 + H2O} \\
+\ce{NH2CONH2 + H2O &-> NH2COONH4}
+\end{align}
+
+\subsection{Urea Separation}
+The urea-separation cycle consists of two flash drums operating at
+4~bar and 1~bar for upstream separation of excess gases. These gases
+are then allowed to react to form carbamate, which is simulated using
+an RGIBBS reactor. Downstream, the water--urea solution is separated
+using a two-stage distillation setup. First, the mixture enters a
+stripper, where trace amounts of ammonia are removed and water is
+largely vaporized. The remaining urea--water mixture then enters a
+distillation column, which vaporizes water from the mixture and
+yields an approximately 33~wt\% urea--water solution that can be
+adjusted to the exact DEF concentration. The distillation column
+operates at 1~bar with a reflux ratio of 1. The number of stages was
+kept at a minimum of five. The column returns a total duty of
+approximately 0.1~MW, which was considered acceptable and was not
+optimized further.
+
+\subsection{Heat Integration and Electric Refrigeration}
+% WRITTEN BY CANBERK
+Heat integration is a critical component in reducing operating costs
+in the nitrate-to-urea process, particularly because of thermally
+intensive unit operations such as stripping columns, coolers,
+compressors, and the high-pressure, high-temperature urea
+reactor. Given the relatively small scale of the plant
+($\sim$125~kg/d urea), full industrial-grade heat-recovery networks
+are not economically feasible; instead, a simplified but effective
+integration strategy is adopted. The primary source of recoverable
+heat is the ammonia stripper, which requires significant thermal duty
+to remove water from hydrous ammonia. In the surrogate formulation,
+this duty is represented as $Q_S$, and partial recovery is
+implemented through a heat-recovery term $Q_{\mathrm{rec}}$,
+constrained by exchanger capacity:
+
+\begin{equation}
+0 \leq Q_{\mathrm{rec}} \leq Q_S
+\end{equation}
+
+\noindent Recovered heat is reused internally. The remaining thermal
+demand is supplied via external hot utilities:
+
+\begin{equation}
+Q_{\mathrm{HU}} = Q_S - Q_{\mathrm{rec}}
+\end{equation}
+
+\noindent This formulation ensures that heat integration directly
+reduces operating expenditure while remaining compatible with the
+surrogate-based optimization framework. Given the absence of
+large-scale steam networks and the fully electrified design
+philosophy, cooling is provided through electrically driven
+refrigeration systems. This is consistent with green ammonia and
+hydrogen systems, where refrigeration is typically implemented
+through closed-loop chillers powered by electricity rather than
+steam-driven absorption systems. Refrigeration loads are implicitly
+included in the unit-level electricity demands ($E_N$, $E_U$) within
+the surrogate models and therefore contribute to the overall plant
+power balance. A hybrid approach combining partial heat recovery from
+heat-intensive units with electrically driven heating and cooling
+utilities provides a robust and scalable solution.
+
+\section{Process Optimization under Intermittent Renewable Energy
+  Supply}
+
+The proposed system seeks the least-cost combination of unit sizes
+and hourly operating decisions for a wind-powered urea plant under
+intermittent wind supply and continuous urea demand. As discussed
+above, the Hornsea~2 wind farm is selected as the renewable-energy
+source. To obtain an optimal sizing and operating schedule, a
+time-varying IPPS formulation is used \cite{Zhang2017IPPS}. This
+section outlines the methodology for integrating intermittent wind
+energy and presents the mathematical optimization model; the
+resulting designs are analyzed in the Results and Discussion.
+
+\subsection{Renewable Energy Integration}
+The use of renewable energy has clear advantages for the
+sustainability and viability of the process; however, it also
+introduces challenges because renewable generation is inherently
+variable and dependent on environmental conditions. In the present
+design, electricity is supplied by the Hornsea~2 offshore wind farm
+on the Yorkshire coast. Because fluctuations in wind intensity affect
+the electricity supply, supplementary strategies are required for
+optimal and reliable operation. Possible approaches to mitigate the
+effects of fluctuating wind conditions include:
+\begin{itemize}
+  \item \textbf{Energy Storage Systems:} Batteries and other storage
+    technologies can be used to buffer fluctuations in energy supply
+    \cite{Rashid2016}. Their integration is crucial because wind
+    generation varies with climatic conditions, and intermittent
+    process operation benefits from the flexibility provided by
+    storage. In the present formulation, battery use is a decision
+    variable, stored power is an operating variable, and battery
+    capacity is a design variable. At the scale considered here,
+    battery integration is feasible.
+  \item \textbf{Flexible Electricity Utilization:} Non-renewable
+    sources such as grid electricity can be used to balance the
+    intermittency of wind power. The combination of wind electricity
+    and grid electricity therefore provides operational flexibility
+    and makes the system easier to adapt to varying conditions.
+  \item \textbf{Real-Time Monitoring:} The inclusion of numerous
+    sensors and advanced metering infrastructure enables continuous
+    data collection and supervision \cite{GaoSheng2018}. Such
+    monitoring supports flexible control and more efficient use of
+    energy, thereby allowing real-time process adaptation to
+    intermittent wind supply.
+  \item \textbf{Demand-Side Management:} Active adjustments to
+    process operation, enabled by real-time monitoring, can
+    synchronize plant activity with periods of high renewable-energy
+    availability. This can be achieved by dynamically scaling the
+    production rate, and therefore the electricity demand, based on
+    instantaneous energy availability.
+\end{itemize}
+
+\subsection{Optimization Model}
+The proposed system is formulated as a Mixed Integer Linear
+Programming (MILP) model. The model jointly decides how large to
+build system components, how to operate them each hour, and how to
+store and dispatch electricity, hydrogen, \ce{CO2}, and anhydrous
+ammonia.
+
+The objective is to minimize the annualized capital cost and
+operating costs while satisfying the total demand for urea production
+under intermittent wind energy:
+
+\begin{equation}
+\min Z = CAPEX_{\mathrm{annualized}} + \sum_{t \in \mathcal{T}} \Delta t \, OPEX_t
+\end{equation}
+\begin{equation}
+\sum_{t \in \mathcal{T}}F^U_t \ge D^{ann}\left(\frac{|\mathcal{T}|}{8760}\right)
+\end{equation}
+
+\noindent where $|\mathcal{T}|$ denotes the number of modeled
+periods, $F^U_t$ is the pure urea flowrate at a given timestep (hour)
+and $D^{ann}$ is the annual pure-urea production target.
+
+The ammonia and urea production units are embedded into the
+mathematical model using surrogate-based process models:
+
+\begin{equation}
+\big(F^{1,op}, F^{2,op}, E^{op}\big) = \mathcal{S}(\mathbf{x})
+\end{equation}
+
+\noindent where $\mathcal{S}(\cdot)$ is a trained ReLU neural-network
+mapping. ReLU networks are selected because their piecewise-linear
+activation structure admits an exact mixed-integer linear
+reformulation, allowing the surrogate models to be embedded directly
+within the planning MILP rather than evaluated externally
+\cite{Grimstad2019ReLU,Anderson2020Strong}. In this work, the trained
+networks are reformulated using the \texttt{reluMIP} library, which
+automatically generates MILP encodings of trained ReLU networks and
+strengthens the resulting formulation through progressive bound
+tightening \cite{Lueg2021reluMIP}. The planning model uses one
+time-invariant operating point for each process unit. Thus, the
+optimizer chooses constant operating-point inputs and outputs for
+both units.
+
+\subsubsection{Energy Storage Dynamics}
+To absorb renewable intermittency, the planning model includes
+battery, hydrogen, carbon dioxide, and ammonia storage. Only
+representative constraints are shown here. The hydrogen and ammonia
+balances illustrate the role of storage as a temporal buffer between
+production and consumption:
+\begin{equation}
+\begin{aligned}
+F^{H2}_t + ch^H_t &= M^{H2}_t + dis^H_t,\\
+F^{NH3}_t + ch^{NH3}_t &= F^{strip}_t + dis^{NH3}_t
+\end{aligned}
+\end{equation}
+Thus, material generated in one period can either be consumed
+immediately or shifted to future periods through storage.
+
+\subsubsection{State-of-Charge (SOC) Dynamics}
+Inter-temporal consistency is enforced through cyclic inventory
+balances. For the battery, the state of charge evolves according to
+\begin{equation}
+I^B_t = I^B_{t-1} + \eta_B^{ch} ch^B_t - \frac{dis^B_t}{\eta_B^{dis}}
+\end{equation}
+with cyclic closure $I^B_0 = I^B_T$. Analogous state equations are
+imposed for hydrogen, carbon dioxide, and ammonia inventories,
+ensuring that the model does not create or deplete storage
+nonphysically over the horizon.
+
+\subsubsection{Power-to-Energy Sizing Constraint}
+Storage design and operation are linked through upper bounds on
+inventory and charging/discharging decisions. For the battery, a
+compact representation is adopted:
+\begin{equation}
+\begin{aligned}
+I^B_t &\le B^{cap},\\
+ch^B_t &\le P_B^{max} z^B_t,\\
+dis^B_t &\le P_B^{max}(1-z^B_t)
+\end{aligned}
+\end{equation}
+where the binary variable $z^B_t$ prevents simultaneous charging and
+discharging. In this way, the model captures the main trade-off
+between installed storage capacity and short-term dispatch
+flexibility without overburdening the planning formulation with
+unnecessary detail. The model is implemented in Python using the
+Pyomo optimization modeling framework and is solved using the Gurobi
+optimizer to a relative optimality tolerance of 1\%
+\cite{Hart2011,gurobi}; cost differences between cases that fall
+within this tolerance are treated as insignificant in the analysis
+below. The wind capacity factor profile,
+$CF_t$, is obtained from Renewables.ninja for a wind park with
+installed capacity $W^{cap}$ \cite{renewables_ninja}. Accordingly,
+the wind power that can be supplied at any given time $t$ from the
+installed capacity is bounded by the product of the instantaneous
+capacity factor and the installed capacity, leading to the following
+availability constraint:
+\begin{equation}
+  P^{wind}_t \le CF_t W^{cap}
+\end{equation}
+In addition, grid imports are regulated through a case-dependent
+grid-share parameter, $\gamma^{grid}$, such that
+\begin{equation}
+  P^{grid}_t \le \gamma^{grid} P^{load}_t
+\end{equation}
+where $\gamma^{grid}$ changes across the four cases and takes the
+values 1, 0.10, 0.05, and 0 for the unrestricted-grid, 10\%
+grid-limit, 5\% grid-limit, and wind-only cases, respectively. The
+simulation accounts for site location, historical weather data, and
+turbine height to estimate hourly electricity availability over the
+year. Our simulated wind park is the Hornsea~2 cluster, as described
+above. The planning horizon comprises 888 hourly periods, and all
+capital and operating costs are annualized to a full year through the
+factor $8760/|\mathcal{T}|$.
+
+\section{Results and Discussion}
+
+\subsection{Surrogate Accuracy and MILP Embedding}
+
+The fidelity of the planning results rests on how faithfully the
+ReLU surrogates reproduce the underlying ASPEN flowsheets, so the
+surrogate quality is examined first. Table~\ref{tbl:surrogates}
+summarizes the test metrics of the six unit-level outputs used in the
+planning model. Figure~\ref{fig:urea-relu-surface} shows the
+surrogate data points together with the fitted ReLU neural-network
+response surface for the electricity required to produce urea over
+the admissible \ce{NH3} and \ce{CO2} operating region.
+
+\begin{table}
+  \caption{Test accuracy of the ReLU neural-network surrogates
+    embedded in the planning MILP. MAE is reported in the units of
+    the respective output.}
+  \label{tbl:surrogates}
+  \centering
+  \begin{tabular}{lllcc}
+    \toprule
+    Unit & Output & Unit basis & $R^2$ & MAE \\
+    \midrule
+    Ammonia & \ce{NH3} product   & kg\,h$^{-1}$ & 0.960 & 0.27 \\
+    Ammonia & water product      & kg\,h$^{-1}$ & 0.910 & 60.9 \\
+    Ammonia & electricity demand & kW           & 0.831 & 185  \\
+    Urea    & pure urea product  & kg\,h$^{-1}$ & 0.973 & 0.20 \\
+    Urea    & product urea mass fraction & --   & 0.931 & 0.023 \\
+    Urea    & electricity demand & kW           & 0.999 & 0.12 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.75\textwidth]{figures/surface_vs_datapoints.pdf}
+  \caption{Comparison of the sampled surrogate data and the fitted
+    ReLU neural-network response surface for the electricity
+    requirement of the urea unit as a function of \ce{NH3} and
+    \ce{CO2} feed rates. The markers represent sampled process data,
+    while the surface represents the corresponding surrogate
+    prediction. The figure illustrates the strongly nonlinear
+    dependence of electricity demand on the feed conditions over the
+    admissible operating region. The fitted surrogate achieves a
+    coefficient of determination of $R^2 = 0.9985$.}
+  \label{fig:urea-relu-surface}
+\end{figure}
+
+Two features of Table~\ref{tbl:surrogates} shape the interpretation
+of the planning results. First, the urea-unit electricity demand is
+captured almost exactly ($R^2 = 0.999$, MAE $=0.12$~kW): over the
+admissible feed window the compression, decomposition, and separation
+duties respond smoothly to the \ce{NH3} and \ce{CO2} feed rates, so a
+compact piecewise-linear network suffices. Second, the ammonia-unit
+electricity demand is the least accurate output ($R^2 = 0.831$, MAE
+$=185$~kW). This output aggregates the hydrogenation preheater,
+cooler, reactor, and compressor duties, whose interaction with the
+brine and hydrogen feeds is markedly less regular across the sampled
+grid. Because the ammonia unit is also the largest electricity
+consumer in the plant (about two thirds of the combined
+ammonia--urea process load, cf.\ the energy analysis below), this is
+the surrogate error most likely to propagate into the sizing
+decisions. The fixed-operating-point formulation mitigates this risk:
+the optimizer selects a single operating point per unit, so surrogate
+error enters the planning model as a bias at one point of the
+response surface rather than as noise across a trajectory, and the
+selected operating points can be verified a posteriori against the
+rigorous flowsheet. As an additional robustness check, sparse
+piecewise-linear hyperplane-tree surrogates with ridge and
+elastic-net leaf regressions were trained on the same data and
+achieved $R^2$ values between $0.95$ and $0.9997$; a full comparison
+is provided in the Supporting Information.
+
+\subsection{Optimal Design and Operating Policy across
+  Grid-Integration Cases}
+
+Four operating-policy cases are considered in order to evaluate how
+progressively tighter restrictions on grid-electricity utilization
+affect plant sizing, storage requirements, and operating
+flexibility: an unrestricted-grid benchmark
+($\gamma^{grid}=1$), moderately and strictly constrained transition
+scenarios in which cumulative grid imports may cover at most 10\% and
+5\% of the total plant electricity demand, and a fully islanded
+wind-only case in which grid imports are prohibited and all
+variability must be absorbed by wind generation, process flexibility,
+and storage. In all cases the high-pressure urea section is
+constrained to operate continuously, reflecting the intolerance of
+the synthesis loop to on/off cycling, so intermittency must be
+absorbed upstream of the ammonia buffer. Table~\ref{tbl:cases}
+compares the optimal designs, and
+Figure~\ref{fig:electricity-balance-cases} shows representative
+zoomed-in electricity-balance intervals that illustrate the resulting
+short-term operating behavior.
+
+\begin{table}
+  \caption{Optimal design capacities and operating characteristics
+    for the four grid-integration cases. Availability denotes the
+    fraction of hours in which the ammonia section operates; the grid
+    share is the realized fraction of total electricity demand
+    supplied by the grid, and curtailment is the fraction of
+    available wind generation that is spilled over the modeled
+    horizon. All four solutions are optimal within a 0.2\% relative
+    gap.}
+  \label{tbl:cases}
+  \centering
+  \begin{tabular}{lcccc}
+    \toprule
+    & Unrestricted & 10\% grid & 5\% grid & Wind only \\
+    \midrule
+    Wind capacity (kW)            & 1848  & 1813  & 1842  & 1855 \\
+    Electrolyzer capacity (kW)    & 490   & 490   & 490   & 491 \\
+    Battery capacity (kWh)        & 3212  & 3547  & 3280  & 3150 \\
+    \ce{H2} storage (kg)          & 22    & 21    & 18    & 15 \\
+    \ce{NH3} storage (kg)         & 477   & 482   & 487   & 483 \\
+    \ce{H2} feed at operating point (kg\,h$^{-1}$) & 9.61 & 9.61 & 9.61 & 9.62 \\
+    Ammonia-unit availability (\%) & 81.4 & 81.4  & 81.4  & 81.4 \\
+    Realized grid share (\%)      & 0     & 0     & 0     & 0 \\
+    Wind curtailment (\%)         & 16.1  & 14.0  & 15.9  & 15.8 \\
+    Annualized cost (M\pounds\,y$^{-1}$) & 14.565 & 14.565 & 14.565 & 14.565 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=\textwidth]{figures/electricity_balance_cases.pdf}
+  \caption{Zoomed-in electricity-balance profiles for the four
+    grid-integration cases: (a) unrestricted grid, (b) 10\% grid
+    limit, (c) 5\% grid limit, and (d) wind only. Bars above zero are
+    available electricity supply, bars below zero are electricity
+    use, and the dashed line is the battery inventory on the right
+    axis; the excess of the supply bars over the use bars corresponds
+    to curtailed wind generation.}
+  \label{fig:electricity-balance-cases}
+\end{figure}
+
+The single most important observation in Table~\ref{tbl:cases} is
+that the grid-integration policy has no effect on the optimal
+design: all four cases converge to the same solution---a
+1.81--1.86~MW wind farm, a 490~kW electrolyzer, a 3.2--3.5~MWh
+battery, an ammonia inventory of about 480~kg, and an annualized
+cost of \pounds 14.565~million\,y$^{-1}$ that agrees across cases to
+within \pounds 500\,y$^{-1}$ (relative gaps 0.16--0.20\%). The
+reason is visible in the realized grid shares: even when grid
+imports are unrestricted, the optimizer purchases no grid
+electricity at all. At the Hornsea~2 specific capital cost of
+\pounds 864.5 per kW and the annualization factor of the model, wind
+electricity costs roughly \pounds 8~MWh$^{-1}$ at the site mean
+capacity factor of 0.594---more than an order of magnitude below the
+assumed grid tariff of \pounds 180~MWh$^{-1}$---so the grid
+constraint that distinguishes the cases is never active. Renewable
+autonomy is therefore not a cost constraint at this scale; it is the
+cost-optimal operating mode, and prohibiting grid use entirely is
+free.
+
+The common design absorbs wind variability through three
+complementary mechanisms. First, generation is moderately overbuilt:
+the 1.85~MW farm serves a mean electrical load of about 1~MW, and
+14--16\% of the available wind energy is spilled, because at
+\pounds 43 per kW-year an occasionally idle turbine is cheaper than
+additional storage. Second, the ammonia section operates
+intermittently at 81.4\% availability with a deliberately oversized
+operating point (design hydrogen feed 9.61~kg\,h$^{-1}$, about 23\%
+above the 7.8~kg\,h$^{-1}$ continuous-equivalent requirement),
+overproducing ammonia during windy hours and drawing down the
+roughly 480~kg ammonia inventory during lulls while the urea section
+runs continuously. Third, the battery smooths sub-daily
+fluctuations, and a small hydrogen store (15--22~kg) covers the
+residual electrolyzer-side variability. The small remaining spread
+of the storage capacities across the four columns of
+Table~\ref{tbl:cases} carries no design information---it is residual
+degeneracy within the 0.2\% optimality gap, as near-optimal designs
+can trade battery, inventory, and spill against one another at
+almost no cost. Internal heat recovery covers 90--99\% of the
+stripper duty $Q_S$, with the balance supplied electrically during
+hours of surplus wind.
+
+\subsection{Storage Sizing Hierarchy}
+
+Figure~\ref{fig:storage-comparison} compares the storage capacities
+across the four cases. All designs combine a battery of
+3.2--3.5~MWh, an ammonia inventory of 477--487~kg, and a
+comparatively small hydrogen store of 15--22~kg, and the merit order
+behind this mix is consistent. The battery is the preferred
+short-term buffer because it is the cheapest and most efficient:
+there is little loss of energy and no additional conversion penalty
+on charging and discharging. Ammonia inventory is the preferred
+\emph{chemical} buffer: whereas hydrogen must be stored under
+cryogenic or high-pressure conditions (\pounds 645.89 per kg of
+capacity in the cost model), ammonia storage takes place at
+near-ambient conditions (\pounds 1.89 per kg) and holds a privileged
+position in the flowsheet---discharging it feeds the urea section
+directly, without re-running the electrolysis and hydrogenation
+steps---which is precisely what sustains the continuous urea
+operation required in every case. Hydrogen storage, the only carrier
+able to time-shift the electrolyzer load itself, is deployed only
+sparingly (15--22~kg).
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/storage_capacity_cases.pdf}
+  \caption{Comparison of storage capacities across the investigated
+    system-design cases: hydrogen and ammonia storage (left axis, kg)
+    and battery capacity (right axis, kWh).}
+  \label{fig:storage-comparison}
+\end{figure}
+
+A second, less conventional element of the storage strategy is
+generation overbuild. Because a kilowatt of wind capacity costs only
+about \pounds 43\,y$^{-1}$ after annualization, installing surplus
+turbine capacity and spilling its output during windy hours is
+frequently cheaper than cycling energy through any storage medium.
+The optimizer exploits this in every case---curtailment of 14--16\%
+(Table~\ref{tbl:cases})---so storage is sized only for the residual
+variability that overbuild cannot remove, namely sustained low-wind
+periods. The resulting design rule is that overbuilt generation
+absorbs the bulk of the hourly variability, the battery handles
+short-term fluctuations, ammonia inventory smooths multi-hour
+production lulls in front of the always-on urea section, and
+hydrogen storage covers the deepest electrolyzer-side deficits. None
+of the storage capacities approaches its engineering bound (the
+battery, for example, uses at most 3.5 of an allowed 20~MWh),
+confirming that the designs are cost-shaped rather than
+constraint-shaped.
+
+\subsection{Cost Structure and the Cost of Renewable Autonomy}
+
+Figure~\ref{fig:annualized-cost} decomposes the annualized cost of
+the four designs by component. The decomposition shows that the cost
+of the plant is, to first order, the cost of the chemical plant
+itself: the fixed capital of the ammonia section
+(\pounds 191.7~million) and the urea section (\pounds 95.8~million)
+together account for more than 98\% of the total capital base of
+approximately \pounds 291.5~million, and hence of the annualized cost
+of \pounds 14.57~million\,y$^{-1}$ at the capital recovery factor of
+0.05. The entire renewable-energy system---wind farm
+(\pounds 1.6~million), electrolyzer (\pounds 2.0~million),
+battery (\pounds 0.33--0.37~million), and chemical
+storage (under \pounds 0.02~million)---adds up to roughly 1.4\% of
+the capital cost, and the net operating cost is negligible because
+the oxygen by-product credit approximately offsets the small
+\ce{CO2} feed expenditure.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/annualized_cost_allocation.pdf}
+  \caption{Allocation of the annualized cost by capital and operating
+    component for the four grid-integration cases.}
+  \label{fig:annualized-cost}
+\end{figure}
+
+Two consequences follow. First, the price of renewable autonomy is
+zero: prohibiting grid imports does not change the optimal design at
+all, because the wind-plus-storage system that full autonomy
+requires is cheap relative to the plant it powers and is fully built
+even in the unrestricted-grid optimum. For policy
+purposes, the economically meaningful barrier to deploying this
+process is not the renewable-energy supply---which the optimization
+selects voluntarily on cost grounds---but the capital intensity of
+small-scale chemical synthesis. Second, the cost analysis identifies
+where effort should be directed: reducing the fixed capital of the
+ammonia and urea sections (through simplification, modularization,
+or scale-up) has two orders of magnitude more leverage than any
+optimization of the energy system, whose design freedom is worth at
+most a few percent of the total cost.
+
+\subsection{Energy-Demand Structure}
+
+The distribution of the electrical load between the process sections
+is stable across cases: the electrolyzer accounts for approximately
+40\% of the total electricity demand, the ammonia section
+(hydrogenation, recovery, and compression duties) for a further
+35\%, and the urea section for about 16\%, with the remainder
+consumed by the electric hot utility, storage auxiliaries, and
+battery charging. The urea-section load is constant at 161~kW owing
+to its continuous operation. In aggregate the plant consumes
+approximately 190~kWh of electricity per kilogram of urea
+produced---one to two orders of magnitude above the specific energy
+demand of integrated fossil-based ammonia--urea complexes---which is
+the single number that most clearly characterizes the efficiency
+challenge of the present flowsheet. Two deliberately conservative
+conventions inflate this figure. First, the unit-level demands are
+electricity equivalents formed from the sum of the absolute
+equipment duties, so cooling and condenser loads are charged at a
+coefficient of performance of unity: at the ammonia operating point,
+the exothermic reactor duty and the effluent cooler account for
+roughly 380 of the 460~kW-equivalent, although the temperature level
+(60~$^\circ$C) would in practice allow cooling water rather than
+electrically driven refrigeration. Second, the hydrogenation is fed
+roughly twice the stoichiometric hydrogen requirement (a design feed
+of 9.6~kg\,h$^{-1}$ against a stoichiometric demand of about
+4.4~kg\,h$^{-1}$ for the produced ammonia) and the unreacted excess
+is not recycled, so electrolysis alone contributes about
+77~kWh\,kg$^{-1}$ of urea. Figure~\ref{fig:energy-breakdown} resolves the
+wind-only case down to individual equipment duties. Within the
+ammonia section, the separation and thermal-conditioning duties
+(stripper utility, preheater, cooler, and compressor) dominate, while
+within the urea section the reboiler and condenser duties of the
+separation columns outweigh the synthesis-loop compression. Together
+with the electrolyzer share, this breakdown identifies two
+high-leverage efficiency targets: the excess-hydrogen operation of
+the nitrate hydrogenation (the design hydrogen feed of about
+9.5~kg\,h$^{-1}$ far exceeds the stoichiometric requirement of the
+recovered nitrate) and the unmatched hydrogenation preheat/cool
+pairing in the ammonia thermal train.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/wind_only_detailed_energy_duty_breakdown.pdf}
+  \caption{Detailed breakdown of the electricity and duty demand for
+    the wind-only case, resolved by process section (inner ring) and
+    individual equipment duty (outer ring).}
+  \label{fig:energy-breakdown}
+\end{figure}
+
+\subsection{Economic Evaluation}
+
+The economic evaluation of the system is performed by calculating the
+break-even price (BEP) of the urea product using the net present
+worth (NPW) framework and comparing the calculated price with current
+market prices. This evaluation establishes a basis for assessing
+process feasibility. The NPW calculation can be written as
+\cite{Peters2025PlantDesign}:
+
+\begin{equation}
+\begin{aligned}
+\mathrm{NPW} ={}& \sum_{j=1}^{N} PWF_{cf,j}
+\left[(s_j - c_{oj} - d_j)(1-\Phi) + rec_j + d_j\right] \\
+& - \sum_{j=1}^{N} PWF_{v,j} T_j
+\end{aligned}
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+ \item $PWF_{cf,j}$ is the present worth factor for cash flow in year $j$
+  \item $s_j$ is the sales revenue in year $j$
+  \item $c_{oj}$ is the operating cost in year $j$
+  \item $d_j$ is the depreciation in year $j$, assumed to be linear:
+    $d_j = (\mathrm{FCI} - C_S) / N$
+  \item $\Phi$ is the tax rate
+  \item $rec_j$ is the money recovered from the capital investment
+  \item $PWF_{v,j}$ is the present worth factor for investment made
+    in year $j$, taken to be 1 since the only investments are made in
+    the $0^{\mathrm{th}}$ year
+  \item $T_j$ is the total investment made in year $j$
+    \cite{Peters2025PlantDesign}
+\end{itemize}
+
+After substitution of the relevant terms, the NPW formulation can be
+simplified as:
+
+\begin{equation}
+\begin{aligned}
+\mathrm{NPW} ={}& - CAPEX \\
+& + \sum_{j=1}^{N} (s_j - OPEX)(1-\Phi)/(1+i)^j \\
+& + \sum_{j=1}^{N} d_j/(1+i)^j \\
+& + (C_S + C_W)/(1+i)^N
+\end{aligned}
+\end{equation}
+
+where:
+
+\begin{itemize}
+ \item $i$ is the interest rate
+  \item $C_S$ is the salvage value of the Fixed Capital Investment
+    (FCI), assumed to be $C_S = 0.15 \cdot FCI$; where
+    $FCI = 0.80 \cdot CAPEX$
+  \item $C_W$ is the working capital, assumed to be
+    $C_W = 0.20 \cdot CAPEX$
+\end{itemize}
+
+The exact formulations for CAPEX and OPEX can be found in the
+Supporting Information. The CAPEX formulation includes all fixed and
+working-capital investments associated with the production process,
+as well as costs related to wind-farm leasing. The OPEX formulation
+includes operational expenses such as grid electricity, raw
+materials, maintenance, and general administrative expenses from the
+first year of production onward. The evaluation uses an interest
+rate of $i = 7\%$, a project lifetime of $N = 10$ years, and a tax
+rate of $\Phi = 19\%$ (the UK corporation-tax rate), and values the
+revenue streams at the current market prices of urea and \ce{CO2}
+certificates. The BEP of urea can then be found by setting NPW equal
+to zero and solving the resulting equation for sales revenue under
+the four cases.
+
+Because the four designs share the same capital and operating bases,
+their economic indicators coincide: the NPW at market prices is
+$-104.2$~million \textsterling{} for all four
+cases. The negative NPW values indicate that government incentives
+would be required to make the process economically feasible. In this
+context, the UK government's \pounds 1.3~billion Net Zero Innovation
+Portfolio fund for low-carbon systems may represent an important
+opportunity for project support \cite{GovUKNZIP2025}: the full NPW
+gap of a demonstration plant of this kind amounts to about 8\% of
+that fund. It must be emphasized, however, that such support would
+subsidize the scale penalty of the chemical plant, not the renewable
+energy supply, which the cost-optimal design adopts on its own.
+
+To assess the pricing conditions under which the process would break
+even, we calculated the BEP for the two major revenue streams: the
+sale of urea and credits from \ce{CO2} certificates. The BEPs of urea
+for the different cases are shown in Figure~\ref{fig:bep}, and the
+BEPs of \ce{CO2} certificates are shown in
+Figure~\ref{fig:bep_cert}. For comparison, the current market price
+of urea is 1.83~\textsterling/kg urea, and the current market price
+of \ce{CO2} certificates is 41.84~\textsterling/t\ce{CO2}
+\cite{GovUKETSCarbonPrice2025}. The computed break-even urea price is
+approximately 404~\textsterling/kg in every case---more than two
+orders of magnitude above the market price---and the break-even
+\ce{CO2}-certificate price (with urea sold at market price and the
+credit applied to the roughly 438~t\,y$^{-1}$ of biogenic \ce{CO2}
+utilized) is approximately 42{,}000~\textsterling/t, about a
+thousandfold the current certificate price. The near-identity of the
+break-even prices across the four cases is a direct structural
+consequence of the cost decomposition: the ammonia- and urea-plant
+capital costs enter through capacity correlations whose fixed terms
+are invariant across cases and exceed every case-dependent item by
+two orders of magnitude, so the grid policy cannot move the
+break-even price by more than a fraction of a percent. It should be
+noted that these correlations are extrapolated far below the
+capacity range over which they were fitted, so the absolute level of
+the break-even price carries substantial uncertainty; the
+qualitative conclusion, however---that plant capital rather than the
+energy system sets the economics---is robust to this uncertainty.
+The gap has a single structural cause: scale. At 125~kg\,d$^{-1}$ the annual product mass
+over which the fixed capital is amortized is roughly four orders of
+magnitude smaller than in a world-scale urea train, while the
+synthesis-plant capital does not scale down proportionally; the
+energy system, by contrast, contributes only about 2\% of the capital
+base and is economically irrelevant to the gap. Consequently, the
+product revenue itself is nearly irrelevant to project economics at
+this scale---closing the gap requires either aggregation of feedstock
+from multiple treatment works into a larger plant or remuneration of
+the nitrate-removal service itself (avoided brine disposal), rather
+than support directed at electricity prices or carbon credits.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/bep.pdf}
+  \caption{Break-even price of urea in each case compared to the
+    current market price.}
+  \label{fig:bep}
+\end{figure}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.7\textwidth]{figures/bep_cert.pdf}
+  \caption{Break-even price of \ce{CO2} certificates in each case
+    compared to the current market price.}
+  \label{fig:bep_cert}
+\end{figure}
+
+\subsection{Ecological Evaluation}
+
+A gate-to-gate life-cycle assessment (LCA) is performed to evaluate
+the ecological impact of the process. Because urea can be used in a
+wide range of downstream products, product-use effects are excluded
+from the present LCA. It should nevertheless be acknowledged that a
+negative carbon-emission value in this analysis does not necessarily
+imply long-term removal of carbon from the atmosphere. Even so,
+comparing the different cases remains valuable because all cases are
+evaluated using the same metric. In the LCA, avoided greenhouse gas
+(GHG) emissions associated with preventing \ce{CO2} release from the
+process outlet streams are taken into account. In addition, GHG
+emissions associated with electricity use are included. The
+functional unit is 1~kg of urea product. The entire \ce{CO2} stream
+entering the process is treated as \ce{CO2} removed from the
+atmosphere. Besides the carbon that ends up in the urea product,
+carbon has two other possible destinations: it may remain unreacted
+and be vented to the atmosphere, or it may be combusted and released
+as \ce{CO2}. Accordingly, all \ce{CO2} not incorporated into the urea
+product is assumed to be released back to the atmosphere.
+Electricity-related GHG emissions are divided into two components
+because of the hybrid availability of grid electricity and dedicated
+offshore wind electricity, with the respective intensities applied to
+the electricity actually consumed by the plant (curtailed wind
+generation is not charged to the product). Grid electricity carries
+the UK operational intensity of 177~kg\ce{CO2}e/MWh
+\cite{GovUKGHGConversionFactors2025}. Electricity from the dedicated
+wind capacity is carbon-neutral at the point of use, since the
+embodied emissions of the turbines lie upstream of the gate-to-gate
+boundary; as a sensitivity, the assessment is repeated with the
+life-cycle intensity of offshore wind electricity,
+13~kg\ce{CO2}e/MWh according to the United Nations Economic
+Commission for Europe \cite{UNECECarbonNeutralityLCA2022}. Under
+these conventions the material carbon balance contributes a fixed
+credit of $44/60 \approx 0.73$~kg\ce{CO2} per kg of urea (the
+\ce{CO2} incorporated in the product), and the electricity term
+contributes in proportion to the specific electricity demand of
+about 190~kWh\,kg$^{-1}$. Transportation-related GHG emissions are
+neglected in this assessment. The LCA is performed for all four
+grid-integration cases, and the results are shown in
+Figure~\ref{fig:emmision}.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.85\textwidth]{figures/emissions.pdf}
+  \caption{\ce{CO2} emissions per kilogram of product for the four
+    grid-integration cases, in the gate-to-gate accounting with
+    dedicated wind carbon-neutral at the point of use and in the
+    sensitivity including life-cycle electricity intensities,
+    compared with literature values for the conventional production
+    route (steam-methane-reforming-based Haber--Bosch ammonia and
+    Bosch--Meiser urea).}
+  \label{fig:emmision}
+\end{figure}
+
+Because every optimal design is fully wind-powered, the gate-to-gate
+result is identical across the four cases: the process is a net
+consumer of \ce{CO2} at $-0.73$~kg\ce{CO2}\,kg$^{-1}$, the carbon
+fixed in the product. Valorizing the nitrate brine therefore yields
+urea whose gate-to-gate footprint is negative wherever the dedicated
+renewable supply can be treated as carbon-neutral, in contrast to
+the conventional fossil-based route at
+1.83--2.2~kg\ce{CO2}\,kg$^{-1}$. The sensitivity analysis, however,
+shows how strongly this conclusion depends on the electricity
+accounting: charging wind electricity with its life-cycle intensity
+of 13~kg\ce{CO2}e/MWh raises the intensity to
+$+1.56$ to $+1.58$~kg\ce{CO2}\,kg$^{-1}$---comparable to the
+conventional benchmarks---because the specific electricity demand of
+about 190~kWh\,kg$^{-1}$ then contributes roughly
+2.5~kg\ce{CO2}\,kg$^{-1}$, overwhelming the product credit. Had the
+plant been grid-powered at the same demand, the intensity would
+exceed 30~kg\ce{CO2}\,kg$^{-1}$, so renewable supply remains a
+necessary condition in either accounting. The life-cycle sensitivity
+also defines a clear maturation target: under that stricter
+accounting the process becomes a net remover of \ce{CO2} below a
+specific electricity demand of
+$0.73/0.013 \approx 56$~kWh\,kg$^{-1}$. The current
+190~kWh\,kg$^{-1}$ comprises about 77~kWh\,kg$^{-1}$ of electrolysis
+at twice the stoichiometric hydrogen feed and a large cooling
+contribution charged at unit coefficient of performance, so the
+threshold is plausibly reachable: recycling the excess hydrogen
+would cut the electrolysis term toward $\sim$20~kWh\,kg$^{-1}$, and
+assigning the near-ambient cooling duties to cooling water rather
+than electricity-equivalent refrigeration would remove most of the
+remaining gap. Robust carbon benefit therefore hinges on flowsheet
+maturation---hydrogen recycle and a conventional utility
+system---rather than on the energy supply, which is already fully
+renewable in every optimized design.
+
+\section{Conclusions}
+
+This study presents a novel, integrated process for the production of
+urea from nitrate-rich wastewater, green hydrogen, and biogenic
+carbon dioxide utilization. The proposed process valorizes nitrate by
+hydrogenation with green hydrogen, then uses waste carbon dioxide to
+produce green urea using a low-pressure Bosch--Meiser process. Thus,
+a viable pathway is proposed toward simultaneously addressing nitrate
+pollution and carbon emissions, thereby contributing to the closure
+of both the nitrogen and carbon loops. The results indicate that,
+from a process integration perspective, the concept is technically
+feasible and can be effectively synthesized through a hybrid
+framework combining first-principles simulation, surrogate modeling,
+and mixed-integer optimization.
+
+The incorporation of intermittent renewable energy, particularly
+offshore wind, turns out to be the \emph{least} restrictive element
+of the design. All four grid-integration policies converge to the
+same optimal design and the same annualized cost of
+\pounds 14.57~million\,y$^{-1}$, because dedicated wind capacity is
+so much cheaper than grid electricity that the optimizer purchases no
+grid power even when imports are unrestricted; full grid independence
+is free. The case analysis shows a consistent
+intermittency-management strategy: moderate wind overbuilding with
+14--16\% curtailment absorbs most of the hourly variability, a
+battery of about 3.5~MWh handles short-term fluctuations, an ammonia
+inventory of about 480~kg smooths production lulls in front of the
+continuously operating high-pressure urea section, and a small
+hydrogen store covers the deepest electrolyzer-side deficits.
+
+From an economic standpoint, all evaluated scenarios yield negative
+NPW ($-$\pounds 104~million at market prices),
+indicating that the process is not competitive under current market
+conditions without external financial support. The analysis
+localizes the gap precisely: more than 98\% of the capital base is
+the fixed cost of the small-scale ammonia and urea sections, so the
+break-even urea price of about \pounds 404~kg$^{-1}$ reflects a scale
+penalty, not an energy penalty. Policy mechanisms such as
+government-backed innovation funding (e.g., the UK Net Zero
+Innovation Portfolio) could bridge the gap for a demonstration
+plant, but durable viability calls for aggregating nitrate feedstock
+from multiple treatment works toward larger scales or remunerating
+the nitrate-removal service itself, rather than supporting
+electricity prices or carbon credits.
+
+The ecological assessment yields a favorable but
+accounting-sensitive result. With the fully wind-powered designs
+selected by the optimizer, the process is a net consumer of \ce{CO2}
+within the gate-to-gate boundary ($-0.73$~kg\ce{CO2} per kg of urea,
+the carbon fixed in the product) while additionally removing nitrate
+from the water cycle. When the life-cycle intensity of wind
+electricity is included as a sensitivity, the high specific
+electricity demand of about 190~kWh per kilogram of urea turns the
+balance to $+1.6$~kg\ce{CO2}\,kg$^{-1}$, comparable to conventional
+production. Reducing the excess-hydrogen operation of the nitrate
+hydrogenation and the thermal duties of the ammonia section is
+therefore simultaneously the key energy, cost, and emissions lever,
+and would make the carbon benefit robust to the accounting choice.
+
+Overall, the proposed process indicates that decentralized,
+small-scale urea production from wastewater is technically feasible
+and fully compatible with islanded renewable operation, but that its
+practical viability is governed by the capital and energy intensity
+of small-scale synthesis rather than by renewable intermittency.
+Future work should focus on reducing the specific energy demand of
+the nitrate-to-ammonia train, exploring process intensification and
+modularization to cut the fixed capital of the synthesis sections,
+and refining techno-economic assumptions at larger, aggregated
+scales. Additionally, more comprehensive life-cycle assessments,
+including downstream product utilization and transportation effects,
+would further clarify the environmental impact of the system.
+
+\section*{Acknowledgements}
+
+The authors thank the Department of Chemical and Biological
+Engineering at Ko\c{c} University for supporting this work.
+
+\section*{Data Availability}
+
+The tools, models, and code used in this work are provided in the
+following GitHub repository:
+\url{https://github.com/CanberkDemir/Green-Urea}. This repository
+contains the computational resources supporting the methodology and
+analysis presented in this study.
+
+\section*{Supporting Information}
+
+The following material is available in the Supporting Information:
+\begin{itemize}
+  \item Screening of water-electrolyzer technologies and derivation
+    of the specific energy demand $e_{\mathrm{spec}}$
+  \item Tuned kinetic parameters for the nitrate-hydrogenation and
+    urea-synthesis reaction networks
+  \item Full CAPEX and OPEX formulations used in the NPW analysis
+  \item Comparison of the ReLU surrogates with piecewise-linear
+    hyperplane-tree surrogates (ridge and elastic-net leaf models)
+\end{itemize}
+
+\printbibliography
+
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Graphical table-of-contents entry (sized per journal requirements)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\rule{0.05in}{1.75in}%
+\begin{minipage}[b][1.75in]{3.25in}
+  \sffamily
+  \frenchspacing
+  \centering
+  % Suggested TOC graphic: a condensed version of the process flow
+  % diagram (nitrate brine -> NH3 -> urea/DEF) with the wind/storage
+  % loop, e.g. a cropped prodScheme.png.
+  %\includegraphics[width=3.1in]{prism-uploads/prodScheme.png}
+  Nitrate-rich brine + biogenic \ce{CO2} + offshore wind
+  $\rightarrow$ green urea (DEF)
+\end{minipage}%
+\rule{0.05in}{1.75in}
+
+\end{document}
