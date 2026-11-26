@@ -37,6 +37,7 @@ from pyomo.environ import value
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
+import solver_path  # noqa: E402  (Ipopt 3.14 for the DEF solve, TODO D6)
 import ammonia_energy as AE  # noqa: E402
 from heat_integration import Stream, pinch  # noqa: E402
 
@@ -55,11 +56,15 @@ def load_def_module(path):
     return mod
 
 
-def def_section(D, fco2_kgph, direct=0.9, boilup=0.15):
-    """Solve the DEF plant; return (streams, shaft_kw, urea_kgph, info)."""
+def def_section(D, fco2_kgph, direct=0.0, boilup=0.15):
+    """Solve the DEF plant; return (streams, shaft_kw, urea_kgph, info).
+
+    direct=0 (all condensate recycled) solves with Ipopt 3.14; the
+    condensate-to-DEF option (direct>0) is still infeasible (TODO D6).
+    """
     m = D.build_model(fco2_kgph=fco2_kgph, direct_frac=direct,
                       boilup=boilup)
-    with contextlib.redirect_stdout(io.StringIO()):
+    with contextlib.redirect_stdout(io.StringIO()), solver_path.ipopt314():
         s = D.initialize(m)
         D.solve(m, s)
     fs = m.fs
@@ -168,10 +173,85 @@ def run_case(label, D, network="bkp", fh2=10.0, s16=None, tflash=None,
     return out
 
 
+# ------------------------------------------- direct NO3RR route (electro)
+T_CELL = 65.0      # C, cell / catholyte loop temperature (assumed)
+V_TN_NO3RR = 0.607 # V, thermoneutral NO3- + 2H2O -> NH3 + 2O2 + OH- (aq dHf)
+V_TN_HER = 1.481   # V, thermoneutral water splitting
+COP_CHILL_ELECTRO = 4.0  # no R717 loop here; generic 10 C chiller
+
+
+def _flip(streams):
+    for s_ in streams:
+        if s_.duty_kw < 0:
+            s_.t_in, s_.t_out, s_.duty_kw = s_.t_out, s_.t_in, -s_.duty_kw
+    return [s_ for s_ in streams if s_.duty_kw > 1e-6]
+
+
+def run_electro_case(label, D, params="central", stages=4, conversion=0.95,
+                     recovery="S2", integrate=True, dt_min=10.0):
+    """Direct NO3RR cascade (electro_no3rr.py) on raw brine -> NH3 recovery
+    (ammonia_energy.recovery_streams) -> DEF section. No water electrolysis,
+    H2 compression, hydrogenation reactor or B6."""
+    import electro_no3rr as EN
+    _, t = EN.design(EN.CASES[params], "raw", stages, conversion)
+    nh3, cell_kw = t["nh3_kgph"], t["power_kw"]
+    i_n = 8 * EN.F * EN.feed("raw")[0] * conversion            # A to NH3
+    i_h = t["current"] - i_n                                   # A to HER
+    v_avg = cell_kw * 1e3 / t["current"]
+    q_cell = (i_n * (v_avg - V_TN_NO3RR) + i_h * (v_avg - V_TN_HER)) / 1e3
+    h2o = EN.BRINE_KGPH["H2O"]
+    mass = sum(EN.BRINE_KGPH.values())
+    a_streams = [
+        Stream("cell feed preheat", 25.0, T_CELL - 2.0,
+               mass * AE.CP_BRINE * (T_CELL - 27.0) / 3600, section="electro"),
+        Stream("cell heat rejection", T_CELL, T_CELL - 0.1, q_cell,
+               section="electro"),
+    ]
+    rs, r_shaft, r_info = AE.recovery_streams(recovery, nh3, h2o, mass,
+                                              T_CELL)
+    a_streams = _flip(a_streams + rs)
+    a_shaft = cell_kw + r_shaft
+
+    fco2 = nh3 / MW_NH3 / 2 * MW_CO2
+    u_streams, u_shaft, urea, u_info = def_section(D, fco2)
+
+    def elec(streams, shaft):
+        res = pinch(streams, dt_min)
+        return AE.electricity(res, streams, shaft, COP_CHILL_ELECTRO,
+                              integrated=integrate)[
+            "TOTAL, heat-pump heating [kWe]"], res
+
+    a_kw, a_res = elec(a_streams, a_shaft)
+    u_kw, _ = elec(u_streams, u_shaft)
+    plant_kw, res_all = elec(a_streams + u_streams, a_shaft + u_shaft)
+    out = {
+        "NH3 [kg/h]": nh3, "cell power [kW]": cell_kw,
+        "cell FE": t["fe"], "cell waste heat [kW]": q_cell,
+        "by-product H2 (not credited) [kg/h]": t["h2_kgph"],
+        "stripping vapour [kg/h]": r_info.get("stripping vapour [kg/h]", 0.0),
+        "ammonia section [kWh/kg NH3]": a_kw / nh3,
+        "urea [kg/h]": urea, "DEF [kg/h]": u_info["DEF [kg/h]"],
+        "electrolysis [kWh/kg urea]": 0.0,
+        "ammonia section [kWh/kg urea]": a_kw / urea,
+        "urea/DEF section [kWh/kg urea]": u_kw / urea,
+        "TOTAL, sections separate [kWh/kg urea]": (a_kw + u_kw) / urea,
+        "TOTAL, plant-wide HI [kWh/kg urea]": plant_kw / urea,
+        "plant-wide HI saving [kW]": a_kw + u_kw - plant_kw,
+    }
+    print(f"\n=== {label} ===")
+    for k, v in out.items():
+        print(f"  {k:42s} {v:10.2f}")
+    print("  ammonia: " + a_res.summary())
+    print("  plant:   " + res_all.summary())
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--def-module", default=None,
                     help="path to a def_lowp_flowsheet variant")
+    ap.add_argument("--electro-only", action="store_true",
+                    help="only run the direct-NO3RR cases")
     a = ap.parse_args()
     logging.disable(logging.WARNING)
     D = load_def_module(a.def_module)
@@ -189,11 +269,20 @@ def main():
          dict(network="si", fh2=11.5, s16=5000, tflash=50.0,
               recovery="S2", integrate=True)),
     ]
+    electro = [
+        (f"4{c[0]} direct NO3RR ({c}), 4-stage cascade, raw brine, vacuum "
+         "stripper, heat integration", dict(params=c))
+        for c in ("optimistic", "central", "pessimistic")]
     results = {}
-    for label, kw in cases:
+    for label, kw in ([] if a.electro_only else cases):
         try:
             results[label] = run_case(label, D, **kw)
         except Exception as e:  # keep going; report the failure
+            print(f"\n=== {label} ===\n  FAILED: {str(e)[:150]}")
+    for label, kw in electro:
+        try:
+            results[label] = run_electro_case(label, D, **kw)
+        except Exception as e:
             print(f"\n=== {label} ===\n  FAILED: {str(e)[:150]}")
     print("\nSUMMARY (kWh electricity per kg urea; paper reports ~190)")
     for label, r in results.items():

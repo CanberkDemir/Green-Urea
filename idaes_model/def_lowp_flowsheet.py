@@ -86,6 +86,7 @@ from idaes.models.unit_models.pressure_changer import ThermodynamicAssumption
 from idaes.models.unit_models.separator import SplittingType
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import solver_path  # noqa: E402  (Ipopt 3.14, TODO D6)
 from properties.ideal_urea import get_prop  # noqa: E402
 from reactions.urea_reactions import (  # noqa: E402
     add_carbeq_conversion, get_carb_stoich_rxn,
@@ -734,4 +735,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    with solver_path.ipopt314():
+        main()
