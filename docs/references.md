@@ -40,8 +40,17 @@ text before quoting numbers from them in the manuscript.
   <https://pubmed.ncbi.nlm.nih.gov/17478039/> *(not read in full)*
   Selective hydrogenation of nitrate to nitrite over Cu–Pd clusters on activated carbon:
   <https://www.sciencedirect.com/science/article/abs/pii/S1381116906000719> *(not read in full)*
-- **Implication:** the manuscript's ~90% NH3 selectivity on Pd–Cu (citing Zhang et al., `\cite{Pd-Cu_experimental}`) is **not supported** by the Pd–Cu literature found here. The `.bkp` network (55%) is closer to Pd–Cu behaviour. The rewrite should either switch the catalyst to Ru (R1–R3) and keep a high-selectivity network, or keep Pd–Cu with low selectivity. **Team decision; not made in the code.** Both are available via `reactions/ammonia_reactions.py: NETWORK = "bkp" | "si"`.
+- **Implication:** the manuscript's ~90% NH3 selectivity on Pd–Cu (citing Zhang et al., `\cite{Pd-Cu_experimental}`) is **not supported** by the Pd–Cu literature found here. The `.bkp` network is the chosen Aspen-replication basis (~55%), but its rate law has not been validated as physical Pd–Cu kinetics. Both Aspen and SI networks remain available via `reactions/ammonia_reactions.py: NETWORK = "bkp" | "si"`.
 - **To do:** pull the full text of the paper's Zhang et al. reference and check what selectivity it reports and under which conditions.
+
+**[R4a] Pintar, A.; Batista, J.; Levec, J.; Kajiuchi, T. (1996).**
+"Kinetics of the catalytic liquid-phase hydrogenation of aqueous nitrate solutions."
+*Applied Catalysis B: Environmental* 11, 81–98. DOI 10.1016/S0926-3373(96)00036-7.
+<https://www.sciencedirect.com/science/article/abs/pii/S0926337396000367> (paper text and Table 2 also accessible at <https://www.academia.edu/26119188/Kinetics_of_the_catalytic_liquid_phase_hydrogenation_of_aqueous_nitrate_solutions>).
+- Fitted Pd–Cu Langmuir–Hinshelwood **nitrate-disappearance** law: nitrate adsorption and dissociative H2 adsorption on separate sites. In the paper's low-H2-pressure approximation, `(-r_NO3)/C_cat = k_app K_NO3 C_NO3 sqrt(p_H2)/(1 + K_NO3 C_NO3)`, with nitrate concentration in mg/L, H2 pressure in bar, and catalyst concentration in g/L.
+- At 293 K, Table 2 gives `k_app = 33.1 mg/(g_cat min bar^0.5)` and `K_NO3 = 1.960e-2 L/mg`; at 280.5 K, `13.9` and `2.940e-2` in the same units. The reported apparent activation energy is 47 kJ/mol and nitrate adsorption heat is 22 kJ/mol. Verify the printed table/units against a clean PDF before coding; the available text extraction is noisy.
+- **Limits:** fitted at 280.5–293 K, 0.09–0.46 bar H2 partial pressure, and 50–200 mg/L initial nitrate in dilute water. It does not supply separate NH3 and N2 formation rates. The IDAES case is 333 K, 27 bar, and concentrated brine, so direct parameter transfer is a large extrapolation; its catalyst was predominantly N2-selective.
+- **Implementation:** `idaes_model/reactions/pdcu_pintar.py` contains the published nitrate-disappearance law and Table 2 values as a separate calculator. `idaes_model/test_pdcu_pintar.py` checks its 293 K prediction against Table 3. It is not a complete reactor kinetic package.
 
 ## 2. Ammonia recovery from the hydrous product (TODO B1–B3)
 

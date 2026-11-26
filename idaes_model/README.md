@@ -132,18 +132,17 @@ matches Aspen's high-Fh2 plateau (11.87, +0.7%), its Mt matches the
 low/mid branches (0.04%), and its Qh1 sign matches the low branch.
 Treat single Aspen rows near the branch switches with caution.
 
-## Applicability domain: H2-starved feeds are out of scope
+## Applicability domain: H2-starved feeds
 
-The kinetic rates are zero-order in H2 (faithful to the .bkp EXPONENT
-records), so hydrogen exhaustion cannot slow the reactions. Full NO3-
-conversion at Ft=8500 consumes ~9.8 kg/h H2; running the model with
-Fh2 below that makes the PFR hydrogen balance infeasible (Aspen's
-marching integrator instead clips the reactions where H2 runs out along
-the tube, which is how its low-Fh2 rows track the stoichiometric limit).
-Use Fh2 >= ~10 kg/h at Ft=8500, or scale accordingly. Adding a smooth
-H2-availability factor to the rate forms (e.g. C_H2/(C_H2+eps)) would
-extend the model to the starved regime at the cost of deviating from the
-file's documented rate law.
+The original `.bkp` rates are zero-order in H2. The current IDAES default
+multiplies every rate by C_H2/(C_H2 + 20 mol/m3), so the reactions slow as
+hydrogen is exhausted; set `H2_LIMITED = False` in the reaction package to
+recover the verbatim Aspen rates. Full NO3- conversion at Ft=8500 consumes
+~9.8 kg/h H2. The availability factor gives sensible material balances in
+the tested range down to Fh2=9.25 kg/h, but initialization remains unreliable
+for more strongly H2-starved feeds (TODO A4). It is not a calibrated
+Langmuir–Hinshelwood law and must not be used to infer physical changes in
+NH3 selectivity with H2 concentration.
 
 ## Thermodynamics: what is and is not eNRTL here
 

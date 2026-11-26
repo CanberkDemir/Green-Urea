@@ -35,8 +35,8 @@ Every item has the same fields:
 - **Where:** `idaes_model/ammonia_flowsheet.py`, `idaes_model/README.md`.
 - **Notes:** checked against Aspen at Ft = 8500 kg/h and Fh2 = 10 kg/h. Mass balance is within 0.04% and NH3 within -6%. The Qh1 and Qc1 heater duties disagree because of mixing enthalpy; see the README. Re-run on Windows on 2026-11-24 and the results reproduce.
 
-### A2 `[DECIDE]` Kinetic network / catalyst choice: the paper and SI disagree with the `.bkp`
-- **What:** the paper (Eqs. for r1–r4) and SI Table S7 give ~90% NH3 selectivity. The `.bkp`, and the IDAES default, use a different side-reaction network that gives 55%.
+### A2 `[DONE]` Kinetic network choice: use the `.bkp`
+- **What:** the `.bkp` reaction network is the correct basis for reproducing the existing Aspen case and gives ~55% NH3 selectivity. This does not validate its pseudo-first-order rate laws as physical Pd–Cu kinetics. The paper (Eqs. for r1–r4) and SI Table S7 instead describe a different network giving ~90%; those descriptions need correction and are not the Aspen model specification.
 - **Why it matters:** NH3 yield, H2 demand and everything downstream.
 - **Where:** `reactions/ammonia_reactions.py` (`NETWORK = "bkp" | "si"`), `docs/references.md` §1.
 - **Notes:**
@@ -44,7 +44,8 @@ Every item has the same fields:
     - **"bkp":** 55.4% selectivity, 11.96 kg/h NH3, ~9.8 kg/h H2 at full conversion.
     - **"si":** 87.3% selectivity, 18.85 kg/h NH3, ~11 kg/h H2 at full conversion (at Fh2 = 10 it is H2-limited and hits the A4 solver limit).
   - **Literature (R1–R4):** Pd–Cu is an N2-selective drinking-water catalyst, and in alkaline media it largely stops at nitrite. 90% NH3 is not supported for Pd–Cu. Ru/C is NH3-selective with no nitrite intermediate, including in waste ion-exchange brines (Huo et al. 2020, coupled with membrane distillation, which is the closest analogue to our process).
-  - **Decision for the team:** either (a) switch the manuscript catalyst to Ru and use a high-selectivity network (refit kinetics to R1/R2 data), or (b) keep Pd–Cu with `.bkp`-like low selectivity.
+  - **Decision:** retain the `.bkp` network and its ~55% selectivity as the model basis. Align manuscript/SI reaction descriptions and downstream yield and energy claims with it; do not substitute the SI network.
+  - **Recycle boundary:** the default IDAES case already uses the ~55% `.bkp` network and recycles 90% of the flash gas (mainly H2). NH3 is chiefly in the liquid product. Recovering or recycling NH3 can reduce product losses or improve its use in the downstream urea section, but it cannot raise nitrate-to-NH3 selectivity from ~55% to ~80%: nitrate converted to N2 is unavailable to that loop. Report reactor selectivity, NH3 recovery, and overall NH3-to-urea utilization separately.
   - Also check the paper's Zhang et al. reference (`\cite{Pd-Cu_experimental}`).
 ### A3 `[DONE]` H2 recycle: the paper is wrong; the lever is the fresh-H2 feed, not the recycle fraction
 - **What:** the paper (§Energy-Demand Structure, lines ~1014–1029, and the LCA lines ~1254–1260) says the roughly 2× stoichiometric H2 excess "is not recycled" and that recycling it would cut electrolysis from about 77 to about 20 kWh/kg urea.
@@ -67,6 +68,8 @@ Every item has the same fields:
   - K_H2 = 1 was too sharp to solve.
   - **Still open:** cold starts fail below ~9 kg/h, and warm continuation is unreliable (IPOPT restoration). Robust init for the strongly starved regime is untested. Consider more PFR elements or a dedicated initializer.
   - `H2_LIMITED = False` restores the verbatim `.bkp` kinetics.
+  - **Physical kinetics follow-up:** the common H2 saturation factor is a numerical availability approximation, not a fitted Langmuir–Hinshelwood law. Keep the `.bkp` case as the Aspen benchmark; build a separate physical-kinetics case only after selecting a catalyst-specific rate form and obtaining adsorption, rate, and product-selectivity data over the relevant dissolved-H2, nitrate/nitrite, pH, temperature, and brine ranges.
+  - **Literature implementation:** `reactions/pdcu_pintar.py` implements Pintar et al. (1996) Eq. (3) and Table 2 as a separate nitrate-disappearance calculator; `test_pdcu_pintar.py` reproduces the paper's Table 3 calculated initial rate at 293 K. It is not connected to the IDAES PFR because the paper has no NH3/N2 branching parameters, and its dilute-water, <=293 K, <=0.46 bar H2 domain does not cover the 333 K, 27 bar brine case. The IDAES liquid-only reactor also lacks a gas-liquid H2 transfer model. A4 remains open pending a complete product network, catalyst loading, gas-liquid H2 treatment, and robust low-H2 PFR solves.
 ### A5 `[TODO]` Electrolyte thermodynamics (ELECNRTL)
 - **What:** the paper uses ELECNRTL. IDAES uses a reduced eNRTL / ideal-plus-Henry package, so heats of mixing are missing.
 - **Why it matters:** this explains the H1/C1 duty errors in A1, and those duties feed the energy breakdown.
