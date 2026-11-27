@@ -138,6 +138,57 @@
   },
   "cell area m2": 389.4492111887753
  },
+ "electro_plusplus_central": {
+  "label": "electro++",
+  "NH3 [kg/h]": 20.14780264291068,
+  "urea [kg/h]": 35.52295596844568,
+  "DEF [kg/h]": 109.30140297983283,
+  "electricity by category [kW]": {
+   "NO3RR cells": 573.3899699907652,
+   "stripper overhead MVR": 30.47979574319754,
+   "DEF compression + pumps": 5.413150065037588,
+   "heat pump": 30.884842801171597,
+   "e-boiler (>160 C)": 68.33555539475972,
+   "chiller": 21.51593732569772,
+   "cooling water": 6.8354631246029305
+  },
+  "ammonia kW": 728.7704493182823,
+  "urea kW standalone": 24.283176893615188,
+  "plant kW (HI)": 736.8547144452323,
+  "HI credit kW": 16.19891176666522,
+  "kWh/kg urea": 20.743057393640477,
+  "kWh/kg NH3": 36.57246040696682,
+  "utilities": {
+   "hot utility [kW]": 129.1435993007937,
+   "of which >160 C [kW]": 68.33555539475972,
+   "HP COP": 1.9688636363636363,
+   "HP source [C]": 50.0,
+   "chilled [kW]": 86.06374930279088,
+   "cooling water [kW]": 341.7731562301465
+  },
+  "info": {
+   "NH3 product [kg/h]": 20.14780264291068,
+   "NH3 lost in HER gas [kg/h]": 0.1643524296017809,
+   "cell power [kW]": 573.3899699907652,
+   "cell area [m2]": 389.4492111887753,
+   "cell FE": 0.8614077156866253,
+   "cell heat [kW]": 355.0646638871897,
+   "HER H2 [kg/h]": 1.5629258222685758,
+   "anolyte make-up water [kg/h]": 361.1984097699172,
+   "stripper reboiler [kW]": 299.45670233858885,
+   "stripper T bottom [C]": 42.5444544545274,
+   "stripper overhead NH3 [mol%]": 4.948273235315371,
+   "feed preheat [kW]": 340.100462195622,
+   "rectifier reflux ratio": 6.023107210835132,
+   "overhead MVR [kW]": 30.47979574319754,
+   "urea [kg/h]": 35.52295596844568,
+   "DEF [kg/h]": 109.30140297983283,
+   "NH3 make-up [kg/h]": 20.16130969149176,
+   "CO2 conversion/pass": 0.48259688117894217,
+   "DEF NH3 [ppm]": 95.32626340770781
+  },
+  "cell area m2": 389.4492111887753
+ },
  "electro_plus_optimistic": {
   "label": "electro+ optimistic",
   "NH3 [kg/h]": 20.109248765812826,
