@@ -349,7 +349,7 @@ Every item has the same fields:
 - **What:** `electro_no3rr.py`, `electro_flowsheet.py`, `electro_cases.py`, `optimization/flex_planning.py`.
 - **Result:** 20.3 kWh/kg urea (central) vs 31.8 for the classical route. NH3 storage plus 1.34x-oversized cells beats battery firming, 2.4 vs 6.7 $/kg urea.
 
-### G2 `[TODO]` Rectifier at ~6 bar
+### G2 `[DONE - no gain]` Rectifier at ~6 bar (20.7 vs 20.3 kWh/kg urea, see docs section 7)
 - **What:** the 198 C sump needs an e-boiler (1.9 kWh/kg urea). At ~6 bar the sump is ~160 C, which a heat pump can reach, but the NH3 condenser needs 10 C chilling. Quantify the trade-off.
 
 ### G3 `[TODO]` MILP planning

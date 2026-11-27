@@ -136,3 +136,51 @@ by-product credit.
 - Add minimum-load and start-up constraints (MILP) to the planning model, and
   costs for the DEF plant and the classical route for a like-for-like
   comparison.
+
+## 7. Results on the existing IPPS basis (`optimization/ipps_electro.py`)
+This model reuses the IPPS model's own inputs by importing them from
+`ipps_green_urea_fixed_operating_point_relu_omlt.py`:
+- wind file and horizon sampling (888 h, one random day per 10-day block);
+- costs: GBP, CRF 0.05, wind £864.5/kW, battery £104/kWh, NH3 storage
+  £1.89/kg, grid £0.18/kWh, CO2 £0.02/kg, O2 credit £0.03/kg;
+- 1C battery, demand 125 kg urea/day, urea always on, the four grid modes.
+
+The electro plant's electricity per kg comes from `electro_cases.json`
+(electro+ central). The stack is costed at £4700/m². It is an LP; the cells
+modulate.
+
+| wind_only | H2 route (existing IPPS results) | electro, IPPS horizon | electro, full year |
+|---|---|---|---|
+| Wind [kW] | 1855 | 218 | 227 |
+| Battery [kWh] | 3150 | 153 | 23 |
+| NH3 storage [kg] | 483 | 134 | 1342 (~10 days of DEF feed) |
+| Electricity [kWh/kg urea] | 193 | 20.4 | 20.4 |
+| £/kg urea excl. plant-capex intercept | 4.12 | 0.53 | 0.55 |
+| £/kg urea incl. intercept | 319 | 315.6 | 315.6 |
+
+`figures/ipps_h2_vs_electro.png`; CSVs in `optimization/solutions/ipps_electro_*.csv`.
+
+How to read this:
+1. **Energy basis.** The H2-route numbers use the IPPS surrogates trained
+   on the Aspen grids (paper basis, ~190 kWh/kg urea). The IDAES model of
+   that same route gives 31.8 kWh/kg (section 4). Most of the 8-9x gap in
+   wind and cost is that energy basis, not the route. Like-for-like
+   (IDAES vs IDAES), the electro route uses 1.6x less electricity and needs
+   no electrolyser or H2 storage. To compare properly, retrain the IPPS
+   surrogates on IDAES data (TODO F4) and rerun both routes.
+2. **The plant-capex correlation has intercepts** of £191.6M (NH3) and
+   £95.8M (urea). At 46 t urea/yr they set ~99 % of the annualised cost
+   (£14.4M/yr) whatever the design, so they hide every other trade-off.
+   They are probably meant for a much larger plant; this should be checked
+   with whoever set them.
+3. **Grid never pays here.** With CRF 0.05 and no O&M, wind costs about
+   £0.008/kWh against £0.18/kWh grid, so all four grid modes give the same
+   design.
+4. **Sampled vs full year.** The sampled horizon stitches non-consecutive
+   days into one cycle, which undervalues multi-day storage: it chooses a
+   small tank plus a 153 kWh battery. The full year chooses a 1.3 t NH3
+   tank and almost no battery. **Storing NH3, not electricity, is the
+   robust conclusion**, the same as the USD model in section 5.
+5. **G2 result.** A 6.2 bar rectifier gives 20.7 vs 20.3 kWh/kg urea, so it
+   does not help. Its 160 °C sump still needs a hot utility above the
+   160 °C heat-pump limit, and the 190 °C DEF reactor stays on the e-boiler.

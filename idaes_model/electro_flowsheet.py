@@ -167,8 +167,17 @@ def _solve(m):
     return m
 
 
-def rectifier_streams(nh3_kgph, w_kmolph):
-    """15 bar rectifier to 99.5 mol% NH3 (Underwood Rmin, R = 1.5 Rmin)."""
+# rectifier pressure -> (sump T = water Tsat [C], NH3 condensing T [C],
+#                        NH3 latent heat at that T [kJ/kg])
+RECT_LEVELS = {15.5: (198.0, 40.0, 1100.0), 6.2: (160.0, 10.0, 1226.0)}
+
+
+def rectifier_streams(nh3_kgph, w_kmolph, p_bar=15.5):
+    """Rectifier to 99.5 mol% NH3 (Underwood Rmin, R = 1.5 Rmin).
+
+    15.5 bar: NH3 condenses on cooling water (40 C) but the sump boils at
+    198 C (above heat-pump reach). 6.2 bar: sump 160 C (heat pump), NH3
+    condenses at 10 C (chiller). TODO G2 compares the two."""
     import ammonia_energy as AE
     from heat_integration import Stream
     n_nh3 = nh3_kgph / 17.031
@@ -176,20 +185,20 @@ def rectifier_streams(nh3_kgph, w_kmolph):
     a = AE.ALPHA_RECT
     r_min = (1 / (a - 1)) * (AE.X_D / x_f - a * (1 - AE.X_D) / (1 - x_f))
     r = AE.R_FACTOR * max(r_min, 0.1)
-    q_cond = (r + 1) * nh3_kgph * AE.DH_NH3_40C / 3600.0
+    t_bot, t_cond, dh = RECT_LEVELS[p_bar]
+    q_cond = (r + 1) * nh3_kgph * dh / 3600.0
     w_kg = w_kmolph * 18.015
-    q_reb = q_cond + w_kg * AE.CP_WATER * (AE.P_RECT_T_BOT
-                                           - AE.T_RECT_FEED) / 3600
+    q_reb = q_cond + w_kg * AE.CP_WATER * (t_bot - AE.T_RECT_FEED) / 3600
     st = [
         Stream("rectifier feed preheat", 40.0, AE.T_RECT_FEED,
                (w_kg + nh3_kgph) * AE.CP_WATER * (AE.T_RECT_FEED - 40.0)
                / 3600, section="recovery"),
-        Stream("rectifier reboiler (15 bar)", AE.P_RECT_T_BOT,
-               AE.P_RECT_T_BOT + 0.1, q_reb, section="recovery"),
-        Stream("rectifier condenser (NH3, 40 C)", AE.T_RECT_COND + 0.1,
-               AE.T_RECT_COND, q_cond, section="recovery"),
-        Stream("rectifier bottoms cooler", AE.P_RECT_T_BOT, AE.T_CW + 5.0,
-               w_kg * AE.CP_WATER * (AE.P_RECT_T_BOT - AE.T_CW - 5.0) / 3600,
+        Stream(f"rectifier reboiler ({p_bar:g} bar)", t_bot, t_bot + 0.1,
+               q_reb, section="recovery"),
+        Stream(f"rectifier condenser (NH3, {t_cond:g} C)", t_cond + 0.1,
+               t_cond, q_cond, section="recovery"),
+        Stream("rectifier bottoms cooler", t_bot, AE.T_CW + 5.0,
+               w_kg * AE.CP_WATER * (t_bot - AE.T_CW - 5.0) / 3600,
                section="recovery"),
     ]
     return st, {"rectifier R": r, "rectifier feed NH3 [mol%]": 100 * x_f}
@@ -214,7 +223,7 @@ def mvr_work_kw(n_mol_s, p_in_bar, p_out_bar, t_in_k, k=1.33):
     return n_mol_s * k / (k - 1) * 8.314 * t_in_k * (r ** ((k - 1) / k) - 1)         / ETA_MVR / 1e3
 
 
-def results(m, mvr=False):
+def results(m, mvr=False, rect_p=15.5):
     """Energy streams and numbers for pinch / plant_energy.
 
     mvr=True: the stripper overhead (0.08 bar, ~40 C) is recompressed to
@@ -264,7 +273,7 @@ def results(m, mvr=False):
     ]
     # rectifier to anhydrous NH3: shortcut (ammonia_energy S2 tail) fed with
     # the RIGOROUS stripper overhead (NH3 + water flows)
-    rs, r_info = rectifier_streams(nh3_kgph, h2o_top * 3.6)
+    rs, r_info = rectifier_streams(nh3_kgph, h2o_top * 3.6, rect_p)
     streams += rs
     r_shaft = mvr_work_kw(value(top.flow_mol[0]), P_STRIP_BAR, P_MVR_BAR,
                           t_b + 273.15) if mvr else 0.0

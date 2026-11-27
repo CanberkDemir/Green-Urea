@@ -106,9 +106,9 @@ def classical():
     return nh3, st, shaft, value(fs.refrigeration.cop), {}
 
 
-def electro(mvr, case="central"):
+def electro(mvr, case="central", rect_p=15.5):
     m = EF.solve(EF.build(case))
-    st, _, out = EF.results(m, mvr=mvr)
+    st, _, out = EF.results(m, mvr=mvr, rect_p=rect_p)
     shaft = {"NO3RR cells": out["cell power [kW]"]}
     if mvr:
         shaft["stripper overhead MVR"] = out["overhead MVR [kW]"]
@@ -182,7 +182,7 @@ def charts(results, pinches):
     plt.close(fig)
 
     # per-unit thermal duties, best case
-    r = results[-1]
+    r = min(results, key=lambda x: x["kWh/kg urea"])   # best case
     st = sorted(r["streams"], key=lambda s: (s[1], -s[4]))
     fig, ax = plt.subplots(figsize=(9, 0.32 * len(st) + 1.5))
     secs = sorted({s[1] for s in st})
@@ -272,7 +272,8 @@ def main():
     D = PE.load_def_module(None)
     cases = [("classical", classical, False),
              ("electro", lambda: electro(False), False),
-             ("electro+", lambda: electro(True), True)]
+             ("electro+", lambda: electro(True), True),
+             ("electro++", lambda: electro(True, rect_p=6.2), True)]
     results, pinches = [], []
     for label, fun, php in cases:
         with contextlib.redirect_stdout(io.StringIO()) as buf:
@@ -292,7 +293,8 @@ def main():
     charts(results, pinches)
     block_pfd(results)
     js = {"classical": results[0], "electro_central": results[1],
-          "electro_plus_central": results[2]}
+          "electro_plus_central": results[2],
+          "electro_plusplus_central": results[3]}
     for v in js.values():
         v.pop("streams", None)
     js.update(rng)
