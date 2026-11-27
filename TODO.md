@@ -238,11 +238,12 @@ Every item has the same fields:
   - At 90% direct: 651 ppm NH3 (ISO limit 2000) and heating 53 → 34 kW.
   - These numbers predate Canberk's carbamate changes. Re-run to refresh them.
 
-### D6 `[WIP]` DEF flowsheet does not converge on Windows / IPOPT 3.13.2 since commit 5fc8a93
+### D6 `[DONE for direct=0]` DEF flowsheet does not converge on Windows / IPOPT 3.13.2 since commit 5fc8a93
 - **What:** after the carbamate-loop changes (10% carbamate retention, MP/LP decomposers, `passes=1`, 0.8/0.2 damped tear), `def_lowp_flowsheet.py` fails at "closed loop (fixed X): infeasible" for `--direct` 0, 0.5 and 0.9 on this machine. The README reports it solving on Canberk's platform (Linux, IPOPT 3.14).
 - **Why it matters:** blocks refreshing D2's numbers and any DEF-based plant totals.
 - **Where:** `def_lowp_flowsheet.py` (`initialize`, `solve`).
 - **Notes:**
+  - Fixed 2026-11-26 for `--direct 0`: COIN-OR Ipopt 3.14.20 (`C:\Users\Sunoy\ipopt-3.14`, override with `IPOPT_314_EXE`) solves it in ~25 s. `solver_path.ipopt314()` wraps the DEF solves only, because the ammonia B6 initialization fails on 3.14. `--direct > 0` is still infeasible on 3.14, even when the split is ramped up from the converged all-recycle case, so it is a spec problem (D6b, open). `plant_energy.py` now uses `direct=0`.
   - Diagnosed 2026-11-25. With `passes=9`, tear passes 1–5 converge smoothly: recycle water creeps 0.389 → 0.470 mol/s, slowed by the 0.2 damping. On pass 6 a unit initialization fails silently and returns garbage (CARB 5.9 mol/s), after which the tear diverges (318 mol/s at pass 8).
   - `passes=4` reaches the closed-loop solve but IPOPT reports locally infeasible.
   - The pre-5fc8a93 version (e55ae7c) solved here.
@@ -341,3 +342,18 @@ Every item has the same fields:
 - **Why it matters:** a consistent techno-economic analysis.
 - **Where:** none yet.
 - **Notes:** low priority.
+
+## G. Direct electrochemical NH3 route (2026-11-26, `docs/electro_def_plant.md`)
+
+### G1 `[DONE]` NO3RR screening model, IDAES section, case comparison, flexible-operation LP
+- **What:** `electro_no3rr.py`, `electro_flowsheet.py`, `electro_cases.py`, `optimization/flex_planning.py`.
+- **Result:** 20.3 kWh/kg urea (central) vs 31.8 for the classical route. NH3 storage plus 1.34x-oversized cells beats battery firming, 2.4 vs 6.7 $/kg urea.
+
+### G2 `[TODO]` Rectifier at ~6 bar
+- **What:** the 198 C sump needs an e-boiler (1.9 kWh/kg urea). At ~6 bar the sump is ~160 C, which a heat pump can reach, but the NH3 condenser needs 10 C chilling. Quantify the trade-off.
+
+### G3 `[TODO]` MILP planning
+- **What:** add minimum load (stripper and rectifier ~30 %), start-up costs, hot-standby power for the DEF loop, and DEF/classical-route capex to `flex_planning.py`.
+
+### G4 `[TODO]` Validate the NO3RR cell assumptions
+- **What:** chloride-brine NO3RR, CEM H+/Na+ selectivity, catalyst life and the cathode overpotential are literature ranges, not data for this brine.

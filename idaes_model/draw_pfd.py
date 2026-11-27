@@ -78,6 +78,13 @@ DEF_SECTIONS = {
     "Products / vents": ["def_prod", "vent_mp", "vent_vac"],
 }
 
+ELECTRO_SECTIONS = {
+    "Feeds": ["feed"],
+    "Electrochemical NO3RR (4-stage cascade, 65 C)": ["pre", "cell"],
+    "Degassing": ["gls"],
+    "NH3 recovery (0.08 bar, 10 equilibrium stages)": ["strip"],
+}
+
 # (source, destination) pairs drawn as recycle streams
 RECYCLES = {("b26", "m01"), ("b9", "b13"), ("b17", "b5"), ("b7", "b15"),
             ("split1", "mixer1"), ("rec_pump", "m_r"),
@@ -91,6 +98,10 @@ LABELS = {
     "urea": {"steam_feed": "STRIPH2O", "def_prod": "DEF-OUT", "b1": "B1"},
     "ammonia": {"b1": "B1 (RPlug)"},
     "def": {"steam_feed": "LP steam", "def_prod": "DEF 32.5 wt%"},
+    "electro": {"feed": "Nitrate brine 8500 kg/h", "pre": "Feed preheat",
+                "cell": "NO3RR cathode\n(StoichiometricReactor)",
+                "gls": "H2 degassing flash",
+                "strip": "Vacuum NH3 stripper\n(10 trays, rigorous)"},
 }
 _ACTIVE = {}
 
@@ -149,7 +160,7 @@ def _phase_tag(port):
     return ""
 
 
-def build_graph(m, sections, title):
+def build_graph(m, sections, title, extra_edges=()):
     fs = m.fs
     g = graphviz.Digraph("pfd", format="svg")
     g.attr(rankdir="LR", splines="spline", nodesep="0.35", ranksep="0.55",
@@ -170,6 +181,7 @@ def build_graph(m, sections, title):
             continue
         edges.append((src_u, dst_u, _phase_tag(arc.source)))
 
+    edges += [(getattr(fs, a), getattr(fs, b), t) for a, b, t in extra_edges]
     # Translators only bridge property packages - draw straight through
     def is_tr(u):
         return "Translator" in type(u).__name__
@@ -204,7 +216,7 @@ def build_graph(m, sections, title):
                     continue
                 cls = type(u).__name__.lstrip("_").replace("Scalar", "")
                 shape, fill = STYLE.get(cls, ("box", "#ffffff"))
-                if nm == "b25col":
+                if nm in ("b25col", "strip"):
                     shape, fill = "box3d", "#dbe7f5"
                 c.node(u.local_name, _label(nm), shape=shape, fillcolor=fill,
                        width="0.5" if shape in ("circle", "triangle",
@@ -240,6 +252,22 @@ def main():
         m = D.build_model()
         g = build_graph(m, DEF_SECTIONS, "Low-pressure DEF urea plant "
                         "(after US 10,759,745 B2): IDAES flowsheet")
+    elif which == "electro":
+        import contextlib
+        import io
+        import electro_flowsheet as EF
+        with contextlib.redirect_stdout(io.StringIO()):
+            m = EF.solve(EF.build())
+        g = build_graph(m, ELECTRO_SECTIONS, "Electrochemical NH3 section: "
+                        "IDAES flowsheet (electro_flowsheet.py)",
+                        extra_edges=[("gls", "strip", "L")])
+        # non-IDAES tail (shortcut rectifier, tank) for context
+        g.node("rect", "Rectifier 15 bar\n(shortcut)", shape="box",
+               fillcolor="#ffffff", style="filled,dashed")
+        g.node("tank", "NH3 tank -> DEF plant", shape="cylinder",
+               fillcolor="#dbe7f5")
+        g.edge("strip", "rect", label="V")
+        g.edge("rect", "tank")
     else:
         import ammonia_flowsheet as A
         m = A.build_model() if hasattr(A, "build_model") else A.build()
