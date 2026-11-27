@@ -357,3 +357,6 @@ Every item has the same fields:
 
 ### G4 `[TODO]` Validate the NO3RR cell assumptions
 - **What:** chloride-brine NO3RR, CEM H+/Na+ selectivity, catalyst life and the cathode overpotential are literature ranges, not data for this brine.
+
+### F4 IPPS surrogates on IDAES data (reluMIP) `[IN PROGRESS 2026-11-27]`
+See `docs/electro_def_plant.md` section 8. Done: data A/B/C/D, ReLU nets + reluMIP check, IPPS MILP `optimization/ipps_idaes.py`, surface plots with op points. First optimum on the lower edge of the A and D boxes; the domain was expanded (A Ft 7500, Fh2 ~7.5; D Fco2 8.5). Next: retrain B/C/D and metadata (only A was retrained), run `--days 10`, repeat the expand-retrain loop until the optimum is interior, then the full 888 h. The ureaF replica (C) cannot reach the IPPS urea spec; D (DEF plant) is used instead.
