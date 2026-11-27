@@ -72,7 +72,7 @@ def plot_1d(sec, meta, ops):
                        label=f"IPPS op. point: {mode}")
         ax.set_xlabel(LABEL[xin])
         ax.set_ylabel(LABEL[out])
-        ax.set_title(f"R$^2$ {d['r2']:.4f}, RMSE {d['rmse']:.3g}", fontsize=10)
+        ax.set_title(f"ReLU {tuple(d['hidden_layers'])}, R$^2$ {d['r2']:.4f}, RMSE {d['rmse']:.3g}", fontsize=10)
         ax.grid(alpha=0.3)
     axes[0].legend(fontsize=7)
     fig.suptitle(TITLES[sec] + f"  ({meta[sec]['n_points']} IDAES points)")
@@ -120,7 +120,7 @@ def main():
             ax.set_xlabel(LABEL[xin[0]])
             ax.set_ylabel(LABEL[xin[1]])
             ax.set_zlabel(LABEL[out])
-            ax.set_title(f"{LABEL[out]}\nReLU {meta['hidden_layers']}, "
+            ax.set_title(f"{LABEL[out]}\nReLU {tuple(d['hidden_layers'])}, "
                          f"R$^2$ {d['r2']:.4f}, RMSE {d['rmse']:.3g}",
                          fontsize=10)
             ax.view_init(elev=25, azim=-135)

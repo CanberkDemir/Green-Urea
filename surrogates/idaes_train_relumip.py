@@ -44,24 +44,33 @@ SECTIONS = {
     # (the ureaF replica C cannot reach the IPPS urea spec)
     "D": (["Fco2"], ["pure_urea_kgph", "nh3_makeup_kgph", "electric_kwhph"]),
 }
-HIDDEN = (8, 8)
-EPOCHS = 3000
+# Hidden layers per section. A tuple fixes the size; a list of tuples is
+# searched smallest-first and the first net with R2 >= R2_TARGET and
+# RMSE <= RMSE_FRAC * output range is kept (else the best one).
+CANDIDATES = [(1,), (2,), (3,), (2, 2), (4,), (4, 4)]
+HIDDEN = {s: (8,) for s in "ABCD"}  # one layer of 8: fast training + small MILP
+R2_TARGET = 0.999
+RMSE_FRAC = 0.01
+EPOCHS = 500
+PATIENCE = 50
 SEED = 20261126
 
 
-def train(x, y):
+def train(x, y, hidden):
     xm, xs = x.mean(0), np.maximum(x.std(0), 1e-8)
     ym, ys = y.mean(), max(y.std(), 1e-8)
     tf.keras.utils.set_random_seed(SEED)
     net = tf.keras.Sequential(
         [tf.keras.layers.Input(shape=(x.shape[1],))]
-        + [tf.keras.layers.Dense(n, activation="relu") for n in HIDDEN]
+        + [tf.keras.layers.Dense(n, activation="relu") for n in hidden]
         + [tf.keras.layers.Dense(1, activation="linear")])
     net.compile(optimizer=tf.keras.optimizers.Adam(3e-3), loss="mse")
     net.fit((x - xm) / xs, (y - ym) / ys, epochs=EPOCHS,
             batch_size=min(32, len(x)), verbose=0,
             callbacks=[tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="loss", factor=0.5, patience=200, min_lr=1e-5)])
+                monitor="loss", factor=0.5, patience=20, min_lr=1e-5),
+                tf.keras.callbacks.EarlyStopping(
+                monitor="loss", patience=PATIENCE, restore_best_weights=True)])
     w = net.get_weights()
     w[0] = (w[0] / xs[:, None]).astype(np.float32)
     w[1] = (w[1] - (xm / xs) @ net.get_weights()[0]).astype(np.float32)
@@ -98,6 +107,8 @@ def mip_check(net, lo, hi, pts):
 
 
 def main():
+    import time
+    t0 = time.time()
     meta = {}
     for sec, (xin, yout) in SECTIONS.items():
         f = DATA / f"{sec}.csv"
@@ -110,26 +121,43 @@ def main():
         meta[sec] = {"inputs": xin, "input_bounds": dict(zip(xin, zip(lo, hi))),
                      "n_points": len(df), "outputs": {}}
         rng = np.random.default_rng(0)
-        pts = x[rng.choice(len(x), size=min(3, len(x)), replace=False)]
+        pts = x[rng.choice(len(x), size=min(2, len(x)), replace=False)]
         for out in yout:
             y = df[out].to_numpy(np.float32)
-            net = train(x, y)
-            pred = net(x).numpy().ravel()
-            rmse = float(np.sqrt(np.mean((pred - y) ** 2)))
-            r2 = float(1 - np.sum((pred - y) ** 2)
-                       / max(np.sum((y - y.mean()) ** 2), 1e-12))
+            cands = HIDDEN[sec]
+            cands = cands if isinstance(cands, list) else [cands]
+            span = max(float(y.max() - y.min()), 1e-12)
+            best, trials = None, []
+            for h in cands:
+                net = train(x, y, h)
+                pred = net(x).numpy().ravel()
+                rmse = float(np.sqrt(np.mean((pred - y) ** 2)))
+                r2 = float(1 - np.sum((pred - y) ** 2)
+                           / max(np.sum((y - y.mean()) ** 2), 1e-12))
+                trials.append({"hidden": list(h), "r2": r2, "rmse": rmse})
+                if len(cands) > 1:
+                    print(f"  {sec} {out} {h}: R2={r2:.5f} RMSE={rmse:.4g}",
+                          flush=True)
+                if best is None or r2 > best[2]:
+                    best = (net, h, r2, rmse)
+                if r2 >= R2_TARGET and rmse <= RMSE_FRAC * span:
+                    best = (net, h, r2, rmse)
+                    break
+            net, h, r2, rmse = best
             err = mip_check(net, lo, hi, pts)
             path = OUT / f"{sec}_{out}.keras"
             net.save(path)
             meta[sec]["outputs"][out] = {
                 "file": path.name, "rmse": rmse, "r2": r2,
                 "range": [float(y.min()), float(y.max())],
+                "hidden_layers": list(h), "candidates": trials,
                 "relumip_vs_keras_max_abs": err}
-            print(f"{sec} {out:22s} R2={r2:.4f} RMSE={rmse:.4g} "
+            print(f"{sec} {out:22s} {h} R2={r2:.4f} RMSE={rmse:.4g} "
                   f"reluMIP|dev|={err:.2e}", flush=True)
-    meta["hidden_layers"] = list(HIDDEN)
     (OUT / "metadata.json").write_text(json.dumps(meta, indent=2))
-    print(f"wrote {OUT}")
+    meta["train_seconds"] = time.time() - t0
+    (OUT / "metadata.json").write_text(json.dumps(meta, indent=2))
+    print(f"wrote {OUT} in {meta['train_seconds']:.0f} s")
 
 
 if __name__ == "__main__":

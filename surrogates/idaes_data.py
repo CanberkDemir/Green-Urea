@@ -173,19 +173,36 @@ def section_a():
 
 
 # ----------------------------------------------------------------- B
-def section_b(n=15):
+B_NH3_RANGE = (1.0, 14.0)       # kg/h, covers A.csv (9.7-12.8) and low flows
+B_WATER_RANGE = (2000.0, 5500.0)  # kg/h
+B_N = 40                          # grid points per axis
+
+
+def section_b(n=B_N, nh3_range=B_NH3_RANGE, water_range=B_WATER_RANGE):
     a = pd.read_csv(OUT / "A.csv")
     ratio = float((a.s13_kgph / a.water_kgph).median())
     t_s13 = float(a.t_s13.median())
-    rows = []
-    for nh3 in np.linspace(a.ammonia_kgph.min(), a.ammonia_kgph.max(), n):
-        for w in np.linspace(a.water_kgph.min(), a.water_kgph.max(), n):
-            st, shaft, info = AE.recovery_streams("S2", nh3, w, w * ratio,
-                                                  t_s13)
-            e = elec(st, shaft, 4.0)
+    rows, bad = [], []
+    for nh3 in np.linspace(*nh3_range, n):
+        for w in np.linspace(*water_range, n):
+            try:
+                st, shaft, info = AE.recovery_streams("S2", nh3, w,
+                                                      w * ratio, t_s13)
+                e = elec(st, shaft, 4.0)
+                x_f = info["overhead NH3 [mol%]"] / 100
+                if not (0 < x_f < AE.X_D) or info["rectifier R (=1.5 Rmin)"]                         <= AE.R_FACTOR * 0.1 + 1e-12:
+                    raise ValueError(f"Underwood invalid x_f={x_f:.3g}")
+            except Exception as ex:  # shortcut model breakdown
+                bad.append((nh3, w, repr(ex)))
+                continue
+            if not np.isfinite(e) or e <= 0:
+                bad.append((nh3, w, f"E={e}"))
+                continue
             rows.append(dict(ammonia_kgph=nh3, water_kgph=w,
                              anhydrous_nh3_kgph=AE.RECOVERY * nh3,
                              electric_kwhph=e))
+    if bad:
+        print(f"B: dropped {len(bad)} invalid points, e.g. {bad[:3]}")
     df = pd.DataFrame(rows)
     df.to_csv(OUT / "B.csv", index=False)
     print(f"wrote {OUT / 'B.csv'} ({len(df)} points); "
@@ -332,10 +349,15 @@ def section_d():
             Dm.solve(m, s)
         port = m.fs.co2_feed.outlet
         n0 = value(port.flow_mol[0])
+        # stripper steam scaled with Fco2 (fixed 20 kg/h over-dilutes the
+        # DEF below ~8.5 kg/h CO2 and the water make-up hits its lb of 0)
+        steam = m.fs.steam_feed.outlet.flow_mol[0]
+        s0 = value(steam)
         for grid in (sorted([f for f in FCO2_DEF if f >= FCO2_DEF_START]),
                      sorted([f for f in FCO2_DEF if f < FCO2_DEF_START],
                             reverse=True)):
             port.flow_mol[0].fix(n0)
+            steam.fix(s0)
             with contextlib.redirect_stdout(io.StringIO()):
                 s.solve(m)
             cur = FCO2_DEF_START
@@ -346,6 +368,7 @@ def section_d():
                 while abs(fco2 - f_ok) > 1e-9:
                     f = f_ok + max(-h, min(h, fco2 - f_ok))
                     port.flow_mol[0].fix(n0 * f / FCO2_DEF_START)
+                    steam.fix(s0 * f / FCO2_DEF_START)
                     r = s.solve(m, load_solutions=False)
                     if r.solution:
                         m.solutions.load_from(r)
