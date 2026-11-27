@@ -184,3 +184,38 @@ How to read this:
 5. **G2 result.** A 6.2 bar rectifier gives 20.7 vs 20.3 kWh/kg urea, so it
    does not help. Its 160 °C sump still needs a hot utility above the
    160 °C heat-pump limit, and the 190 °C DEF reactor stays on the e-boiler.
+
+## 8. IPPS surrogates retrained on IDAES data with reluMIP (TODO F4, in progress)
+Session 2026-11-26/27. Stopped by the user mid-iteration; state below.
+
+### Files
+| File | Role |
+|---|---|
+| `surrogates/idaes_data.py` | IDAES sampling per section (`.venv`): `A`, `B`, `C`, `D`; `--ft/--fh2/--fco2/--step` add points to the existing CSVs (domain expansion) |
+| `surrogates/idaes_data/{A,B,C,D}.csv` | training data |
+| `surrogates/idaes_train_relumip.py` | one Keras ReLU net (8,8) per output, scaling folded in; every net is embedded with reluMIP (big-M, LP bound tightening, Gurobi) and checked against Keras (system Python) |
+| `surrogates/relumip_compat.py` | reluMIP fix: its node-redundancy check indexes past the hidden layers whenever an output never changes sign (every flow/power here) -> IndexError |
+| `surrogates/idaes_surrogate_plots.py [oppoint.json]` | data + fitted surfaces, IPPS operating points marked; `figures/idaes_surrogate_{A,B,C,D}.png` |
+| `optimization/ipps_idaes.py` | IPPS MILP with the reluMIP nets (A, B, D), same costs/wind/grid modes as the original IPPS; `--days N` short horizon, `--urea-flex`, writes + replots the op point after each mode, reports which inputs sit on the data-box edge |
+
+### Sections and data
+- **A ammonia** (ammonia_flowsheet, case-2 settings): inputs Ft, Fh2 -> aq. NH3, water, electricity (no electrolyser). Only Fh2 = 10, Ft = 8500 converges cold; everything else is continuation. **Steps away from the base need Ipopt 3.14** (3.13 fails at the first 50 kg/h Ft step). 55 points, Ft 7500-9080, Fh2 ~7.5/8-15. Below that the reactor is H2-starved and fails (TODO A4). NH3 = min(~1.22 Fh2, nitrate limit); above Fh2 ~ 10 the extra H2 is wasted.
+- **B NH3 recovery** (shortcut S2, algebraic): inputs = A outputs. Electricity ~148-169 kW, set by the 5000 kg/h water, almost independent of NH3.
+- **C urea, ureaF replica**: 57 points, Fnh3 8-12, Fco2 10-50 (continuation from 10/15). **It never exceeds ~0.5 kg/h urea at <5 wt%**; urea falls as Fco2 rises, the opposite of Aspen (Fco2 ~44 -> 5.6 kg/h at 39 wt%). It cannot meet the IPPS demand (5.2 kg/h at >= 32.5 wt%), so it is trained and plotted but **not used in the IPPS**. The replica's high-CO2 behaviour needs fixing (TODO C).
+- **D low-pressure DEF plant** (the IDAES plant's urea route) replaces C in the IPPS: input Fco2 -> urea, NH3 make-up, electricity; DEF is 32.5 wt% by construction. Converges cold only at Fco2 >= 14; continuation (Ipopt 3.14, adaptive step) reaches **8.5-20 kg/h** (9 points, ~linear). Even at 8.5 it makes 11.6 kg/h urea, 2.2x the IPPS demand, so urea-always-on overproduces (`--urea-flex` lets it cycle).
+
+Fits (first round): R² >= 0.99 for every output, reluMIP vs Keras within 2e-4.
+
+### IPPS result so far (first data box, 888 h, free_grid)
+Optimum at the **lower corner of every box**: Ft 8500, Fh2 9.0, DEF Fco2 10.0.
+W 1125 kW, battery 67 kWh, electrolyser 459 kW, H2 store 111 kg, NH3 store 444 kg,
+ammonia train on 73 % of hours, 42 kWh/kg urea, £1.11/kg urea excl. the plant-capex
+intercept (£121/kg with it). grid_10pct was similar. These numbers are from the
+first box and are superseded once the expanded data is used.
+
+### Where it stopped and what is next
+1. Domain expanded downward after that optimum: A to Ft 7500 / Fh2 ~7.5, D to Fco2 8.5. Retraining was interrupted: **the A nets are retrained on the new data, but B, C, D nets and `metadata.json` are from the first round** -> rerun `python surrogates/idaes_train_relumip.py` before using them.
+2. Run `python optimization/ipps_idaes.py --days 10` (operating-point learning), look at the edge report and the replotted surfaces, extend the data toward that edge with `idaes_data.py ... --ft/--fh2/--fco2`, retrain, repeat until the optimum is interior; then run the full 888 h.
+3. Ft and Fh2 will probably keep going down (less brine, less H2), limited by H2 starvation in A (A4) and by D converging only down to Fco2 8.5. A DEF plant sized for 5.2 kg/h urea needs Fco2 ~3.8: needs a better continuation path (e.g. scale every DEF flow together) or a smaller-plant spec.
+4. Production constraint: like the original IPPS, total urea over the horizon >= demand; there is no per-day minimum. With always-on urea that is moot; add a daily minimum if `--urea-flex` is used.
+5. Fix the ureaF replica (C) high-CO2 behaviour, then compare C and D.

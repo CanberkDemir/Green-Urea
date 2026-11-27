@@ -67,6 +67,11 @@ def def_section(D, fco2_kgph, direct=0.0, boilup=0.15):
     with contextlib.redirect_stdout(io.StringIO()), solver_path.ipopt314():
         s = D.initialize(m)
         D.solve(m, s)
+    return def_streams(D, m)
+
+
+def def_streams(D, m):
+    """(streams, shaft_kw, urea_kgph, info) of a solved DEF model."""
     fs = m.fs
     c = lambda T: value(T) - 273.15  # noqa: E731
     streams = []

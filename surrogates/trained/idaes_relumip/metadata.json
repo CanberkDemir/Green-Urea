@@ -1,0 +1,187 @@
+{
+  "A": {
+    "inputs": [
+      "Ft",
+      "Fh2"
+    ],
+    "input_bounds": {
+      "Ft": [
+        8500.0,
+        9080.0
+      ],
+      "Fh2": [
+        8.995499610900879,
+        15.007499694824219
+      ]
+    },
+    "n_points": 27,
+    "outputs": {
+      "ammonia_kgph": {
+        "file": "A_ammonia_kgph.keras",
+        "rmse": 0.001787099172361195,
+        "r2": 0.9999868869781494,
+        "range": [
+          10.986319541931152,
+          12.777708053588867
+        ],
+        "relumip_vs_keras_max_abs": 9.06998321781316e-07
+      },
+      "water_kgph": {
+        "file": "A_water_kgph.keras",
+        "rmse": 0.014583793468773365,
+        "r2": 0.9999729990959167,
+        "range": [
+          5062.93603515625,
+          5073.166015625
+        ],
+        "relumip_vs_keras_max_abs": 0.00015980978696461534
+      },
+      "electric_kwhph": {
+        "file": "A_electric_kwhph.keras",
+        "rmse": 0.06758791208267212,
+        "r2": 0.9998690485954285,
+        "range": [
+          94.14757537841797,
+          117.30760955810547
+        ],
+        "relumip_vs_keras_max_abs": 1.1394585158086556e-05
+      }
+    }
+  },
+  "B": {
+    "inputs": [
+      "ammonia_kgph",
+      "water_kgph"
+    ],
+    "input_bounds": {
+      "ammonia_kgph": [
+        10.986319541931152,
+        12.777708053588867
+      ],
+      "water_kgph": [
+        5062.93603515625,
+        5073.166015625
+      ]
+    },
+    "n_points": 225,
+    "outputs": {
+      "anhydrous_nh3_kgph": {
+        "file": "B_anhydrous_nh3_kgph.keras",
+        "rmse": 0.0008147287298925221,
+        "r2": 0.9999977946281433,
+        "range": [
+          10.876456260681152,
+          12.649930953979492
+        ],
+        "relumip_vs_keras_max_abs": 2.199432426230885e-05
+      },
+      "electric_kwhph": {
+        "file": "B_electric_kwhph.keras",
+        "rmse": 0.00023603328736498952,
+        "r2": 0.9999986886978149,
+        "range": [
+          167.6886444091797,
+          168.59686279296875
+        ],
+        "relumip_vs_keras_max_abs": 1.912020678673798e-05
+      }
+    }
+  },
+  "C": {
+    "inputs": [
+      "Fnh3",
+      "Fco2"
+    ],
+    "input_bounds": {
+      "Fnh3": [
+        9.5,
+        12.0
+      ],
+      "Fco2": [
+        10.0,
+        50.0
+      ]
+    },
+    "n_points": 57,
+    "outputs": {
+      "pure_urea_kgph": {
+        "file": "C_pure_urea_kgph.keras",
+        "rmse": 0.004415658302605152,
+        "r2": 0.9992663264274597,
+        "range": [
+          0.09805689007043839,
+          0.7248707413673401
+        ],
+        "relumip_vs_keras_max_abs": 5.7724331092856573e-08
+      },
+      "product_urea_wtfrac": {
+        "file": "C_product_urea_wtfrac.keras",
+        "rmse": 0.0003757583035621792,
+        "r2": 0.9992027878761292,
+        "range": [
+          0.008482574485242367,
+          0.059500131756067276
+        ],
+        "relumip_vs_keras_max_abs": 4.535235118008352e-09
+      },
+      "electric_kwhph": {
+        "file": "C_electric_kwhph.keras",
+        "rmse": 0.16968005895614624,
+        "r2": 0.9900906085968018,
+        "range": [
+          9.33004379272461,
+          16.39765167236328
+        ],
+        "relumip_vs_keras_max_abs": 1.67233771719566e-06
+      }
+    }
+  },
+  "D": {
+    "inputs": [
+      "Fco2"
+    ],
+    "input_bounds": {
+      "Fco2": [
+        10.0,
+        20.0
+      ]
+    },
+    "n_points": 6,
+    "outputs": {
+      "pure_urea_kgph": {
+        "file": "D_pure_urea_kgph.keras",
+        "rmse": 0.015564696863293648,
+        "r2": 0.999988853931427,
+        "range": [
+          13.645662307739258,
+          27.291494369506836
+        ],
+        "relumip_vs_keras_max_abs": 1.3850913020974076e-06
+      },
+      "nh3_makeup_kgph": {
+        "file": "D_nh3_makeup_kgph.keras",
+        "rmse": 0.00923586543649435,
+        "r2": 0.999987781047821,
+        "range": [
+          7.744285583496094,
+          15.487597465515137
+        ],
+        "relumip_vs_keras_max_abs": 4.4910890650839974e-07
+      },
+      "electric_kwhph": {
+        "file": "D_electric_kwhph.keras",
+        "rmse": 0.006075125653296709,
+        "r2": 0.9999920129776001,
+        "range": [
+          18.2569522857666,
+          24.555898666381836
+        ],
+        "relumip_vs_keras_max_abs": 7.857292132484872e-07
+      }
+    }
+  },
+  "hidden_layers": [
+    8,
+    8
+  ]
+}
