@@ -31,7 +31,9 @@ from relumip_compat import AnnModel  # noqa: E402  (relumip + bug fix)
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "surrogates" / "idaes_data"
-OUT = ROOT / "surrogates" / "trained" / "idaes_relumip"
+OUT = Path(os.environ.get("IDAES_NET_DIR",
+                          ROOT / "surrogates" / "trained" / "idaes_relumip"))
+ONLY = os.environ.get("IDAES_SECTIONS", "ABCD")   # e.g. "BD"
 OUT.mkdir(parents=True, exist_ok=True)
 
 SECTIONS = {
@@ -120,6 +122,8 @@ def main():
     t0 = time.time()
     meta = {}
     for sec, (xin, yout) in SECTIONS.items():
+        if sec not in ONLY:
+            continue
         f = DATA / f"{sec}.csv"
         if not f.exists():
             print(f"skip {sec}: {f} missing")

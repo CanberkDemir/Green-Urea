@@ -251,3 +251,41 @@ reactor is H2-limited (NH3 ~ 1.22 Fh2). B's op point is interior.
   40x40 (denser where the optimum is).
 - **D:** demand pins Fco2 at 3.63; densify 3-6 kg/h at 0.1 steps; 6-20 can stay.
 Then retrain (8,) nets and rerun the 10-day IPPS; stop when no input is on an edge.
+
+### Design optimisation of B and D at the IPPS steady state (2026-11-27)
+**B (NH3 recovery)**, `idaes_model/recovery_opt.py` (shortcut) and
+`idaes_model/recovery_rigorous.py` (rigorous MESH stripper with 1-2 mbar per
+stage pressure drop + IDAES isentropic compressor on IAPWS-95 steam, eta 0.75),
+at 9.85 kg/h aq. NH3:
+
+| design | kW | kWh/kg NH3 |
+|---|---|---|
+| old shortcut (0.08 bar, steam reboiler, 10 C overhead) | 167 | 17.1 |
+| optimised shortcut (0.06 bar, 20 stages, overhead MVR at COP 8) = new B.csv | 30 | 3.1 |
+| rigorous best (0.06/0.079 bar, 20 stages, 1 mbar/stage) | 38 | 3.9 |
+| rigorous practical (0.08/0.12 bar, 20 stages, 2 mbar/stage) | 42 | 4.3 |
+| membrane black box (7.1 kWh/kg N) | 57.5 | 5.8 |
+
+The rigorous column needs 155-230 kW of boil-up (more than the shortcut's
+154 kW: no salting-out); the MVR needs pressure ratios 2.0-2.9 (two stages or
+a turbofan), 1-1.4 m3/s suction and desuperheating of a 130-150 C discharge.
+Most of the remaining B power is the 15.5 bar rectifier (198 C sump at heat-pump
+COP ~1.3). **Open:** calibrate the shortcut B.csv (~30 kW) to the rigorous
+practical design (~42 kW) before the surrogate is trusted.
+
+**D (DEF plant)** at Fco2 3.63: stripping steam 1.0 -> 0.2 kg/kg CO2 and
+N/C 4.0 -> 3.5 (patent bound): 4.46 -> 2.55 kW (0.90 -> 0.52 kWh/kg urea).
+D.csv regenerated on that spec (28 rows, Fco2 3-20). Reactor 190 C / 150 bar
+and decomposer conditions unchanged (the conversion correlation has no T/P
+dependence, so lowering them would be an unjustified saving). The IDAES model
+gives 4.95 kg/h urea at Fco2 3.63, not 5.21: the (8,) surrogate over-predicted
+urea there, so the 10-day IPPS optimum under-produces by ~5 %.
+
+**A (H2 route, packed-bed hydrogenation)**: robust continuation now reaches
+Fh2 5.0 rigorously (fallback Ipopt options, adaptive step, steady-state-jump
+check); A.csv 158 points, 96 from a reduced H2-limited model (NH3 = 1.221 Fh2,
+within 0.2 % of rigorous). Rerun rigorous to replace them (~75 min).
+
+`figures/idaes_surrogate_compare_{B,D}.png`: old vs new design, data and
+(8,) surrogate. The new D (8,) net misfits Fco2 3-6, where the IPPS operates:
+retrain D with a better fit (it is near-linear) before the next IPPS run.

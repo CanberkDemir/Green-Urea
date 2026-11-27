@@ -55,6 +55,9 @@ X_D = 0.995            # anhydrous NH3 purity (mole fraction)
 P_RECT_T_BOT = 198.0   # C, water boiling point at 15 bar (rectifier sump)
 T_RECT_COND = 40.0     # C, NH3 condensing at 15.5 bar
 T_RECT_FEED = 150.0    # C, rectifier feed after bottoms/feed exchanger
+BPE_S13 = 47.0 - 41.5  # K, brine boiling-point elevation (nh3_stripper.py:
+                       # 47 C stage T at 0.08 bar vs 41.5 C pure water)
+DT_MVR = 10.0          # K, overhead-MVR condensing-reboiling approach
 # Brine pre-concentration B6 (TODO A9; docs/references.md R7). The feed is
 # already ~103 g/kg TDS, above the ~70-80 g/L conventional-RO limit, so
 # water removal is thermal: mechanical vapour compression ~24 kWh/m3
@@ -76,6 +79,11 @@ def henry_k(t_c, p_bar):
 def dh_vap_water(t_c):
     """kJ/mol, Watson-type fit (40.7 at 100 C)."""
     return 40.65 * ((647.1 - (t_c + 273.15)) / (647.1 - 373.15)) ** 0.38
+
+
+def t_sat_water(p_bar):
+    """C, inverse of p_sat_water."""
+    return 1838.675 / (5.40221 - math.log10(p_bar)) + 31.737 - 273.15
 
 
 def kremser_s(n, recovery):
@@ -177,8 +185,26 @@ def base_streams(m):
     return st
 
 
-def recovery_streams(option, nh3_kgph, h2o_kgph, s13_kgph, t_s13):
-    """Shortcut NH3-recovery design. Returns (streams, shaft_kw, info)."""
+def p_sat_water(t_c):
+    """bar, Antoine (NIST, 1-100 C range extended)."""
+    return 10 ** (5.40221 - 1838.675 / (t_c + 273.15 - 31.737))
+
+
+def recovery_streams(option, nh3_kgph, h2o_kgph, s13_kgph, t_s13, *,
+                     p_strip=None, t_b=None, n_stages=None, recovery=None,
+                     r_factor=None, t_rect_feed=None, t_ov_cond=None,
+                     overhead_mvr=False, mvr_cop=None):
+    """Shortcut NH3-recovery design. Returns (streams, shaft_kw, info).
+
+    Keyword arguments override the module design (defaults = current
+    constants, so existing callers are unchanged). overhead_mvr: the S2
+    overhead is compressed and condensed in the stripper reboiler
+    (vapour-recompression column); see recovery_opt.py."""
+    n_stages = N_STAGES_STRIP if n_stages is None else n_stages
+    recovery = RECOVERY if recovery is None else recovery
+    r_factor = R_FACTOR if r_factor is None else r_factor
+    t_rect_feed = T_RECT_FEED if t_rect_feed is None else t_rect_feed
+    mvr_cop = MVR_COP if mvr_cop is None else mvr_cop
     if option == "M":
         kw = nh3_kgph * 14.007 / 17.031 * MEMBRANE_KWH_PER_KG_N
         return [], kw, {"membrane electricity [kW]": kw}
@@ -190,13 +216,17 @@ def recovery_streams(option, nh3_kgph, h2o_kgph, s13_kgph, t_s13):
         # raises the stage temperature to ~47 C (boiling-point elevation),
         # leaving a 13 K approach to the 60 C reactor heat. At 0.123 bar
         # the stages run at ~56 C - only 4 K, infeasible for dT_min 10 K.
-        p, t_b = 0.08, 47.0
+        p, t_b0 = 0.08, 47.0
+        if p_strip is not None:
+            p = p_strip
+            t_b0 = t_b if t_b is not None else t_sat_water(p) + BPE_S13
+        t_b = t_b0
     k = henry_k(t_b, p)
-    s_fac = kremser_s(N_STAGES_STRIP, RECOVERY)
+    s_fac = kremser_s(n_stages, recovery)
     l_kmol = h2o_kgph / 18.015
     v_kmol = s_fac * l_kmol / k
     q_reb = v_kmol * dh_vap_water(t_b) * 1e3 / 3600.0          # kW
-    n_nh3 = RECOVERY * nh3_kgph / 17.031
+    n_nh3 = recovery * nh3_kgph / 17.031
     w_ov = max(v_kmol - n_nh3, 0.0)                            # kmol/h
     st = [
         Stream("stripper feed preheat", t_s13, t_b - 2.0,
@@ -209,27 +239,40 @@ def recovery_streams(option, nh3_kgph, h2o_kgph, s13_kgph, t_s13):
         # overhead (water + ~10 mol% NH3) condensed to aqua ammonia; under
         # vacuum the aqua bubble point is low, so condense to 10 C
         Stream("stripper overhead condenser", t_b - 2.0,
-               10.0 if option == "S2" else 40.0, q_reb, section="recovery"),
+               (t_ov_cond if t_ov_cond is not None else
+                (10.0 if option == "S2" else 40.0)), q_reb,
+               section="recovery"),
     ]
     shaft = 0.0
+    if option == "S2" and overhead_mvr:
+        # vapour-recompression column: overhead compressed until it
+        # condenses at t_b + DT_MVR, latent heat drives the reboiler; only
+        # the condensate subcooling (and the NH3 vent) stays as a cooler
+        t_c = t_b + DT_MVR
+        sub = v_kmol * 18.015 * CP_WATER * (t_c - st[3].t_out) / 3600.0
+        st[1] = Stream("stripper reboiler (overhead-MVR)", t_b, t_b + 0.1,
+                       1e-6, section="recovery")
+        st[3] = Stream("stripper overhead condensate cooler", t_c,
+                       st[3].t_out, max(sub, 1e-6), section="recovery")
+        shaft += q_reb / mvr_cop
     if option == "S3":
         # bottoms MVR raises the stripping steam: reboiler duty supplied
         # by compressor work instead of external heat
         st[1] = Stream("stripper reboiler (MVR-supplied)", t_b, t_b + 0.1,
                        0.0 + 1e-6, section="recovery")
-        shaft += q_reb / MVR_COP
+        shaft += q_reb / mvr_cop
 
     # rectifier to anhydrous NH3 (15 bar)
     x_f = n_nh3 / (n_nh3 + w_ov)
     r_min = (1 / (ALPHA_RECT - 1)) * (X_D / x_f
                                       - ALPHA_RECT * (1 - X_D) / (1 - x_f))
-    r = R_FACTOR * max(r_min, 0.1)
-    q_cond = (r + 1) * nh3_kgph * RECOVERY * DH_NH3_40C / 3600.0
+    r = r_factor * max(r_min, 0.1)
+    q_cond = (r + 1) * nh3_kgph * recovery * DH_NH3_40C / 3600.0
     w_kg = w_ov * 18.015
-    q_reb_r = q_cond + w_kg * CP_WATER * (P_RECT_T_BOT - T_RECT_FEED) / 3600
+    q_reb_r = q_cond + w_kg * CP_WATER * (P_RECT_T_BOT - t_rect_feed) / 3600
     st += [
-        Stream("rectifier feed preheat", 40.0, T_RECT_FEED,
-               (w_kg + nh3_kgph) * CP_WATER * (T_RECT_FEED - 40.0) / 3600,
+        Stream("rectifier feed preheat", 40.0, t_rect_feed,
+               (w_kg + nh3_kgph) * CP_WATER * (t_rect_feed - 40.0) / 3600,
                section="recovery"),
         Stream("rectifier reboiler (15 bar)", P_RECT_T_BOT,
                P_RECT_T_BOT + 0.1, q_reb_r, section="recovery"),

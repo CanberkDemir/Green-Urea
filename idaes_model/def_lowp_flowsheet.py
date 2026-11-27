@@ -62,7 +62,7 @@ import sys
 from pathlib import Path
 
 from pyomo.environ import (
-    ConcreteModel, Constraint, Expression, TransformationFactory, Var,
+    ConcreteModel, Constraint, Expression, Param, TransformationFactory, Var,
     value, check_optimal_termination, units as pyunits,
 )
 from pyomo.network import Arc
@@ -245,7 +245,8 @@ def _urea_rxn_config(props):
 
 # --------------------------------------------------------------- build
 def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0,
-                boilup=0.15):
+                boilup=0.15, nc=N_C):
+    """nc: reactor-inlet N/C spec (mutable fs.nc_target, default N_C)."""
     m = ConcreteModel()
     fs = m.fs = FlowsheetBlock(dynamic=False)
     fs.props = GenericParameterBlock(**get_prop(("Vap", "Liq")))
@@ -286,7 +287,8 @@ def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0,
                                                       fs.hc_ratio))
     fs.reactor.urea_ext = Constraint(
         expr=cvr.rate_reaction_extent[0, "UREA"] == fs.x_co2 * fs.n_co2)
-    fs.nc_spec = Constraint(expr=fs.n_nh3 == N_C * fs.n_co2)
+    fs.nc_target = Param(initialize=nc, mutable=True)
+    fs.nc_spec = Constraint(expr=fs.n_nh3 == fs.nc_target * fs.n_co2)
 
     # MP / LP recovery
     _valve(fs, "v_mp", P_MP)
