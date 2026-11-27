@@ -80,6 +80,15 @@ def train(x, y, hidden):
     return net
 
 
+def _solver():
+    """HiGHS if installed, else Gurobi."""
+    for name in ("highs", "gurobi"):
+        opt = pyo.SolverFactory(name)
+        if opt.available(exception_flag=False):
+            return opt
+    raise RuntimeError("no MIP solver: install highspy or gurobipy")
+
+
 def mip_check(net, lo, hi, pts):
     """Max |MIP - Keras| over pts with the net embedded by reluMIP."""
     err = 0.0
@@ -98,9 +107,9 @@ def mip_check(net, lo, hi, pts):
         ann.connect_network_output(m, [m.y])
         ann.embed_network_formulation(
             opt_model=m, bound_tightening_strategy="LP",
-            solver=pyo.SolverFactory("highs"))
+            solver=_solver())
         m.obj = pyo.Objective(expr=m.y)
-        pyo.SolverFactory("highs").solve(m)
+        _solver().solve(m)
         k = float(net(np.array([p], dtype=np.float32)).numpy()[0, 0])
         err = max(err, abs(pyo.value(m.y) - k))
     return err

@@ -90,7 +90,7 @@ def embed(m, nets, sec, inputs, out, var):
     with contextlib.redirect_stdout(io.StringIO()),             contextlib.redirect_stderr(io.StringIO()):
         ann.embed_network_formulation(
             opt_model=blk, bound_tightening_strategy="LP",
-            solver=pyo.SolverFactory("highs"))
+            solver=mip_solver(SOLVER)[1])
     blk.link_in = pyo.Constraint(range(len(xs)),
                                  rule=lambda b, i: xs[i] == inputs[i])
     blk.link_out = pyo.Constraint(expr=blk.y == var)
@@ -252,11 +252,30 @@ def build(cf, meta, nets, grid_mode, urea_flex=False):
     return m
 
 
+def mip_solver(name=None):
+    """HiGHS if installed, else Gurobi (or the one named)."""
+    for cand in ([name] if name else ["highs", "gurobi"]):
+        opt = pyo.SolverFactory(cand)
+        try:
+            if opt.available(exception_flag=False):
+                return cand, opt
+        except Exception:  # noqa: BLE001
+            continue
+    raise RuntimeError("no MIP solver: install highspy or gurobipy")
+
+
+SOLVER = None   # set from --solver in main()
+
+
 def run(cf, meta, nets, mode, time_limit, urea_flex=False):
     m = build(cf, meta, nets, mode, urea_flex)
-    opt = pyo.SolverFactory("highs")
-    opt.options["time_limit"] = time_limit
-    opt.options["mip_rel_gap"] = 1e-3
+    name, opt = mip_solver(SOLVER)
+    if name == "highs":
+        opt.options["time_limit"] = time_limit
+        opt.options["mip_rel_gap"] = 1e-3
+    else:
+        opt.options["TimeLimit"] = time_limit
+        opt.options["MIPGap"] = 1e-3
     r = opt.solve(m, load_solutions=False)
     if not r.solution:
         raise RuntimeError(f"{mode}: {r.solver.termination_condition}")
@@ -288,7 +307,25 @@ def run(cf, meta, nets, mode, time_limit, urea_flex=False):
         "GBP per kg urea excl. plant correlation": ann_ex / urea_y,
         **{f"op {k}": x for k, x in op.items()},
     }
-    return res, op
+    hourly = pd.DataFrame({
+        "t": T, "cf_wind": [cf[t] for t in T],
+        "wind_avail_kw": [cf[t] * v(m.W) for t in T],
+        "wind_used_kw": [v(m.wind[t]) for t in T],
+        "grid_kw": [v(m.grid[t]) for t in T],
+        "batt_ch_kw": [v(m.ch[t]) for t in T],
+        "batt_dis_kw": [v(m.dis[t]) for t in T],
+        "batt_soc_kwh": [v(m.soc[t]) for t in T],
+        "electrolyser_kw": [v(m.Pel[t]) for t in T],
+        "ammonia_AB_kw": [v(m.eab[t]) for t in T],
+        "urea_D_kw": [v(m.ec[t]) for t in T],
+        "ammonia_on": [round(v(m.y[t])) for t in T],
+        "urea_on": [round(v(m.yU[t])) for t in T],
+        "h2_store_kg": [v(m.invH[t]) for t in T],
+        "nh3_store_kg": [v(m.invN[t]) for t in T],
+        "urea_kgph": [v(m.u[t]) for t in T],
+    })
+    res["solver"] = name
+    return res, op, hourly
 
 
 def edge_report(meta, op, tol=0.02):
@@ -319,7 +356,12 @@ def main():
     ap.add_argument("--no-plot", action="store_true")
     ap.add_argument("--urea-flex", action="store_true",
                     help="urea section on/off hourly (IPPS: always on)")
+    ap.add_argument("--solver", default=None,
+                    help="highs or gurobi (default: highs if installed)")
     a = ap.parse_args()
+    global SOLVER
+    SOLVER = a.solver
+    print(f"MIP solver: {mip_solver(SOLVER)[0]}", flush=True)
     cf = I.read_wind_data(I.WIND_CSV, I.N_PERIODS)["cf_wind"]         .clip(0, 1).to_numpy()
     if a.days:
         cf = cf[:24 * a.days]
@@ -330,7 +372,8 @@ def main():
     op_file = OUT / f"ipps_idaes_oppoint{tag}.json"
     rows, ops = [], {}
     for mode in a.modes:
-        r, op = run(cf, meta, nets, mode, a.time_limit, a.urea_flex)
+        r, op, hourly = run(cf, meta, nets, mode, a.time_limit, a.urea_flex)
+        hourly.to_csv(OUT / f"ipps_idaes_hourly{tag}_{mode}.csv", index=False)
         r["on domain edge"] = edge_report(meta, op)
         rows.append(r)
         ops[mode] = op

@@ -219,3 +219,35 @@ first box and are superseded once the expanded data is used.
 3. Ft and Fh2 will probably keep going down (less brine, less H2), limited by H2 starvation in A (A4) and by D converging only down to Fco2 8.5. A DEF plant sized for 5.2 kg/h urea needs Fco2 ~3.8: needs a better continuation path (e.g. scale every DEF flow together) or a smaller-plant spec.
 4. Production constraint: like the original IPPS, total urea over the horizon >= demand; there is no per-day minimum. With always-on urea that is moot; add a daily minimum if `--urea-flex` is used.
 5. Fix the ureaF replica (C) high-CO2 behaviour, then compare C and D.
+
+### 10-day IPPS on the (8,) nets (2026-11-27)
+`python optimization/ipps_idaes.py --days 10` (240 h, Gurobi here, HiGHS if
+installed), schedules `figures/ipps_idaes_schedule_10d_<mode>.png`
+(`ipps_idaes_schedule_plot.py _10d`), op points on `figures/idaes_surrogate_*.png`.
+
+| | free_grid | grid_10pct | grid_5pct | wind_only |
+|---|---|---|---|---|
+| Ft / Fh2 [kg/h] | 7743 / 7.56 | 7999 / 8.37 | 7999 / 8.37 | 7743 / 7.56 |
+| DEF Fco2 / urea [kg/h] | 3.63 / 5.21 | same | same | same |
+| wind kW / battery kWh | 326 / 267 | 346 / 140 | 346 / 140 | 343 / 223 |
+| electrolyser kW / H2 store kg / NH3 store kg | 386 / 30 / 112 | 427 / 37 / 145 | same | 386 / 20 / 85 |
+| ammonia train on-time | 32 % | 29 % | 29 % | 32 % |
+| kWh/kg urea | 41.9 | 44.5 | 44.5 | 44.1 |
+| £/kg urea excl. plant intercept | 1.96 | 2.14 | 2.14 | 1.96 |
+
+Reading: the DEF plant runs continuously at exactly the demand (interior of
+D, 3-20). The ammonia train runs ~30 % of hours at ~9.5 kg/h NH3, mostly in
+windy hours, and the NH3 tank (85-145 kg) carries the DEF plant between
+runs; the battery covers short gaps. Fh2 sits on the **low edge** of A in
+free_grid and wind_only, where A has only 8 data points (Fh2 < 8.6) and the
+reactor is H2-limited (NH3 ~ 1.22 Fh2). B's op point is interior.
+
+### Proposed next data domain
+- **A:** Ft 7000-8500 (step 250) x Fh2 5.0-9.0 (step 0.25), plus the existing
+  points. Walk on Ipopt 3.14 with Fh2 steps of 0.05; expect convergence
+  failures below ~7.5 (H2-starved reactor, TODO A4), so this is also the
+  test of A4.
+- **B:** shrink to the region used, NH3 5-12 kg/h x water 4500-5200 kg/h,
+  40x40 (denser where the optimum is).
+- **D:** demand pins Fco2 at 3.63; densify 3-6 kg/h at 0.1 steps; 6-20 can stay.
+Then retrain (8,) nets and rerun the 10-day IPPS; stop when no input is on an edge.
