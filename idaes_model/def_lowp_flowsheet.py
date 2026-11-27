@@ -245,8 +245,14 @@ def _urea_rxn_config(props):
 
 # --------------------------------------------------------------- build
 def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0,
-                boilup=0.15, nc=N_C):
-    """nc: reactor-inlet N/C spec (mutable fs.nc_target, default N_C)."""
+                boilup=0.15, nc=N_C, aqua_w=None):
+    """nc: reactor-inlet N/C spec (mutable fs.nc_target, default N_C).
+
+    aqua_w: if set (NH3 mass fraction, e.g. 0.30), add an aqua-ammonia
+    make-up feed (B-lite: no anhydrous rectifier) into the LP carbamate
+    condenser. The share of the NH3 make-up it carries is the mutable
+    fs.aqua_share (walk it from ~0 to ~1 after solving; the anhydrous HP
+    NH3 feed carries the rest). Default None = anhydrous design."""
     m = ConcreteModel()
     fs = m.fs = FlowsheetBlock(dynamic=False)
     fs.props = GenericParameterBlock(**get_prop(("Vap", "Liq")))
@@ -330,7 +336,10 @@ def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0,
     _heater(fs, "v_cond_def", T_DEF, 1.0 * BAR)
 
     # LP carbamate condenser
-    _mixer(fs, "m_lpc", ["vap", "cond", "strip"], P_LP)
+    _mixer(fs, "m_lpc", ["vap", "cond", "strip"]
+           + (["aqua"] if aqua_w else []), P_LP)
+    if aqua_w:
+        fs.aqua_feed = Feed(property_package=fs.props)
     _carb_condenser(fs, "lpc", T_LPC, P_LP)
     _flash(fs, "f_lpc", T=T_LPC)
     _pump(fs, "lp_pump", P_MP)
@@ -387,6 +396,8 @@ def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0,
     arc("s_cdef2", fs.v_cond_def.outlet, fs.m_def.cond)
     arc("s_clp", fs.cond_split.to_lp, fs.m_lpc.cond)
     arc("s_lpv", fs.f_lp.vap_outlet, fs.m_lpc.vap)
+    if aqua_w:
+        arc("s_aq", fs.aqua_feed.outlet, fs.m_lpc.aqua)
     arc("s_lpc1", fs.m_lpc.outlet, fs.lpc.inlet)
     arc("s_lpc2", fs.lpc.outlet, fs.f_lpc.inlet)
     arc("s_lpcl", fs.f_lpc.liq_outlet, fs.lp_pump.inlet)
@@ -419,6 +430,21 @@ def build_model(fco2_kgph=15.0, steam_kgph=20.0, direct_frac=0.0,
     fs.water_feed.outlet.flow_mol[0].unfix()        # solved by DEF spec
     fs.water_feed.outlet.flow_mol[0].setlb(0.0)
 
+    if aqua_w:
+        fs.aqua_w = aqua_w
+        x_n = (aqua_w / MW["NH3"]) / (aqua_w / MW["NH3"]
+                                      + (1 - aqua_w) / MW["H2O"])
+        _fix_port(fs.aqua_feed.outlet,
+                  {"NH3": 1e-3 * n_co2 * x_n,
+                   "H2O": 1e-3 * n_co2 * (1 - x_n)}, 313.15, P_LP)
+        fs.aqua_share = Param(initialize=1e-3, mutable=True)
+        aq = fs.aqua_feed.outlet
+        fs.aqua_split = Constraint(
+            expr=aq.flow_mol[0] * aq.mole_frac_comp[0, "NH3"]
+            == fs.aqua_share * (aq.flow_mol[0] * aq.mole_frac_comp[0, "NH3"]
+                                + fs.nh3_feed.outlet.flow_mol[0]))
+        fs.aqua_split.deactivate()      # activated in solve()
+
     dp = fs.def_prod.properties[0]
     fs.def_mass = Expression(
         expr=dp.flow_mol * sum(dp.mole_frac_comp[c] * MW[c] for c in COMPS)
@@ -444,7 +470,10 @@ def initialize(m, passes=1):
     fs.nh3_feed.outlet.flow_mol[0].fix(2.0 * n_co2)
     fs.water_feed.outlet.flow_mol[0].fix(0.05)
 
-    for f in (fs.co2_feed, fs.nh3_feed, fs.steam_feed, fs.water_feed):
+    feeds = [fs.co2_feed, fs.nh3_feed, fs.steam_feed, fs.water_feed]
+    if hasattr(fs, "aqua_feed"):
+        feeds.append(fs.aqua_feed)
+    for f in feeds:
         f.initialize(outlvl=50)
     # recycle guess: carbamate solution carrying the excess NH3 of N/C=4
     rec_guess = {"NH3": 2.2 * n_co2, "CARB": 0.4 * n_co2,
@@ -533,7 +562,8 @@ def initialize(m, passes=1):
         init(fs.def_cool, fs.s_strl)
         init(fs.m_def, fs.s_defa, fs.s_wat, fs.s_cdef2)
         init(fs.def_trim, fs.s_defb)
-        init(fs.m_lpc, fs.s_lpv, fs.s_clp, fs.s_ns_v)
+        init(fs.m_lpc, fs.s_lpv, fs.s_clp, fs.s_ns_v,
+             *([fs.s_aq] if hasattr(fs, "s_aq") else []))
         init(fs.lpc, fs.s_lpc1)
         init(fs.f_lpc, fs.s_lpc2)
         init(fs.lp_pump, fs.s_lpcl)
@@ -586,6 +616,9 @@ def solve(m, solver):
     res = solve_stage("+ conversion trend")
     fs.nh3_feed.outlet.flow_mol[0].unfix()
     fs.nc_spec.activate()
+    if hasattr(fs, "aqua_split"):
+        fs.aqua_feed.outlet.flow_mol[0].unfix()
+        fs.aqua_split.activate()
     res = solve_stage("+ N/C = 4 spec")
     product_mass = value(fs.def_mass)
     urea_mass = product_mass * value(fs.w_urea)

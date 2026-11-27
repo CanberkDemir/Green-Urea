@@ -289,3 +289,28 @@ within 0.2 % of rigorous). Rerun rigorous to replace them (~75 min).
 `figures/idaes_surrogate_compare_{B,D}.png`: old vs new design, data and
 (8,) surrogate. The new D (8,) net misfits Fco2 3-6, where the IPPS operates:
 retrain D with a better fit (it is near-linear) before the next IPPS run.
+
+### Combined B-lite + D (aqua ammonia, no anhydrous rectifier) (2026-11-27)
+`idaes_model/blite_def.py`; `def_lowp_flowsheet.build_model(aqua_w=...)`
+adds an aqua-ammonia make-up into the LP carbamate condenser (default None,
+anhydrous design unchanged). Same optimized stripper + MVR in both cases;
+B-lite replaces the 15.5 bar rectifier by a 2 bar aqua rectifier (120 C
+sump, 50 C condenser). Fco2 3.82 kg/h (5.2 kg/h urea), optimized D design,
+one pinch over B + D. Results in `figures/blite_def.csv`.
+
+| | anhydrous (current) | aqua 35 wt% | aqua 30 wt% |
+|---|---|---|---|
+| B / D [kW] | 8.4 / 2.7 | 8.4 / 6.4 | 8.6 / 7.2 |
+| B+D integrated [kWh/kg urea] | **2.08** | 2.97 | 3.12 |
+| reactor H/C, CO2 conversion/pass | 1.1, 0.56 | 3.1, 0.38 | 3.4, 0.35 |
+| DEF NH3 [ppm] | 128 | 403 | 478 |
+
+Aqua below ~26 wt% is infeasible (the DEF can carry no more water; the
+demin make-up reaches 0). **B-lite does not pay:** at this scale the
+anhydrous rectifier is small (the 15.5 bar column handles only ~3 kg/h NH3),
+so dropping it saves almost nothing, while all aqua water enters the
+reactor through the carbamate recycle and triples H/C, cutting conversion
+per pass from 0.56 to 0.35-0.38 and raising D's power 2.4-2.7x. Water can
+only leave through the purification stripper, after the reactor. Keep the
+anhydrous route; the scale question is better answered by hub-and-spoke
+(central DEF plant fed by stored NH3) or a low-pressure product.
