@@ -90,7 +90,7 @@ def embed(m, nets, sec, inputs, out, var):
     with contextlib.redirect_stdout(io.StringIO()),             contextlib.redirect_stderr(io.StringIO()):
         ann.embed_network_formulation(
             opt_model=blk, bound_tightening_strategy="LP",
-            solver=pyo.SolverFactory("gurobi"))
+            solver=pyo.SolverFactory("highs"))
     blk.link_in = pyo.Constraint(range(len(xs)),
                                  rule=lambda b, i: xs[i] == inputs[i])
     blk.link_out = pyo.Constraint(expr=blk.y == var)
@@ -254,9 +254,9 @@ def build(cf, meta, nets, grid_mode, urea_flex=False):
 
 def run(cf, meta, nets, mode, time_limit, urea_flex=False):
     m = build(cf, meta, nets, mode, urea_flex)
-    opt = pyo.SolverFactory("gurobi")
-    opt.options["TimeLimit"] = time_limit
-    opt.options["MIPGap"] = 1e-3
+    opt = pyo.SolverFactory("highs")
+    opt.options["time_limit"] = time_limit
+    opt.options["mip_rel_gap"] = 1e-3
     r = opt.solve(m, load_solutions=False)
     if not r.solution:
         raise RuntimeError(f"{mode}: {r.solver.termination_condition}")
@@ -334,8 +334,7 @@ def main():
         r["on domain edge"] = edge_report(meta, op)
         rows.append(r)
         ops[mode] = op
-        print(f"
-== {mode} ({r['termination']})")
+        print(f"\n== {mode} ({r['termination']})")
         for k, x in r.items():
             if isinstance(x, float):
                 print(f"  {k:48s} {x:14.3f}")
@@ -351,8 +350,7 @@ def main():
                            capture_output=True)
             print("  op point plotted: figures/idaes_surrogate_*.png",
                   flush=True)
-    print(f"
-wrote {OUT / f'ipps_idaes_summary{tag}.csv'}")
+    print(f"\nwrote {OUT / f'ipps_idaes_summary{tag}.csv'}")
 
 
 if __name__ == "__main__":

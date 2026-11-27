@@ -89,9 +89,9 @@ def mip_check(net, lo, hi, pts):
         ann.connect_network_output(m, [m.y])
         ann.embed_network_formulation(
             opt_model=m, bound_tightening_strategy="LP",
-            solver=pyo.SolverFactory("gurobi"))
+            solver=pyo.SolverFactory("highs"))
         m.obj = pyo.Objective(expr=m.y)
-        pyo.SolverFactory("gurobi").solve(m)
+        pyo.SolverFactory("highs").solve(m)
         k = float(net(np.array([p], dtype=np.float32)).numpy()[0, 0])
         err = max(err, abs(pyo.value(m.y) - k))
     return err
