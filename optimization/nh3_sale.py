@@ -173,9 +173,49 @@ def main():
     sdf.to_csv(H.OUT / "nh3_sale_sensitivity.csv", index=False)
     print("\nsensitivity (GBP/y, with credits):\n",
           sdf.round(0).to_string(index=False))
+    wdf = waste_scenarios(df)
+    wdf.to_csv(H.OUT / "nh3_sale_waste.csv", index=False)
+    print("\nfull waste valorisation (GBP M/y, with credits, base costs):\n",
+          wdf.round(2).to_string(index=False))
     (H.OUT / "nh3_sale_summary.json").write_text(json.dumps(
         dict(nh3=N, assumptions=A), indent=2, default=float))
     plot(res)
+
+
+# full waste valorisation, cumulative, at base costs (assumptions):
+#   N credit: avoided N removal at the receiving WwTW (GBP 4/kg N), or a
+#   nutrient-neutrality credit market (GBP 20/kg N, upper bound);
+#   O2: anode O2, 2 mol per mol NH3 (8 e-), sold at GBP 50/t
+N_PER_NH3 = 14.007 / 17.031
+O2_PER_NH3 = 2 * 32.0 / 17.031
+WASTE_CASES = [
+    ("base: 50 % reuse, credit only where tankered", {}),
+    ("all brine reused", dict(reuse=1.0)),
+    ("+ disposal valued at GBP 15/m3 at every site", dict(reuse=1.0, all_tank=True)),
+    ("+ avoided WwTW N removal GBP 4/kg N", dict(reuse=1.0, all_tank=True, n=4.0)),
+    ("+ anode O2 sold GBP 50/t", dict(reuse=1.0, all_tank=True, n=4.0, o2=50.0)),
+    ("nutrient credit GBP 20/kg N instead", dict(reuse=1.0, all_tank=True, n=20.0, o2=50.0)),
+]
+
+
+def waste_scenarios(df):
+    base, rows = dict(A), []
+    for nm, c in WASTE_CASES:
+        A.update(base)
+        A["salt_reuse_frac"] = c.get("reuse", base["salt_reuse_frac"])
+        d = df.copy()
+        if c.get("all_tank"):
+            d["tankered"] = True
+        for n in (1, 8):
+            e, h = network(d, n, "ex-works"), H.network(d, n, "hub")
+            extra = e["nh3_t_y"] * 1e3 * (N_PER_NH3 * c.get("n", 0.0)
+                                          + O2_PER_NH3 * c.get("o2", 0.0) / 1e3)
+            rows.append(dict(case=nm, n=n, waste_credit=e["waste_gbp_y"] / 1e6,
+                             n_o2_credit=extra / 1e6,
+                             nh3_net=(e["net_gbp_y"] + extra) / 1e6,
+                             def_net=(h["net_gbp_y"] + extra) / 1e6))
+    A.update(base)
+    return pd.DataFrame(rows)
 
 
 def plot(res):

@@ -79,6 +79,28 @@ Net £M/y with carbon and waste credits:
 
 The break-even price is the NH3 price at which the network breaks even with credits. In the base case it is about ten times the market price, so no realistic green premium closes the gap. Stack cost and life matter most, then brine reuse, then power price.
 
+## Valorising all the waste
+
+The sensitivity cases above change costs and prices. This section keeps today's costs and instead credits every waste stream the spokes deal with. Each row adds to the one above; net £M/y with credits:
+
+| Scenario (cumulative) | Waste credit, 8 spokes | N + O2 credit, 8 spokes | NH3, 1 spoke | NH3, 8 spokes | DEF hub, 8 spokes |
+| --- | --- | --- | --- | --- | --- |
+| Base: half the brine reused, trucking credit only where trucked today | 1.74 | – | −0.96 | −2.81 | −3.67 |
+| All brine reused as regenerant | 3.49 | – | −0.70 | −1.06 | −1.93 |
+| + brine disposal valued at £15/m³ at every site | 5.22 | – | **+0.31** | **+0.68** | −0.19 |
+| + avoided nitrogen removal at the sewage works, £4/kg N | 5.22 | 1.96 | +0.88 | +2.63 | +1.76 |
+| + anode O2 sold at £50/t | 5.22 | 2.07 | +0.91 | +2.74 | +1.87 |
+| Nutrient-credit market at £20/kg N instead of £4 | 5.22 | 9.89 | +3.19 | +10.56 | +9.70 |
+
+- **Full brine reuse plus a disposal value at every site is enough to break even** with no cost breakthrough. Direct NH3 sale turns positive at one spoke (+£0.31M/y); the DEF hub does not until the nitrogen credit is added.
+- **Nitrogen is the next lever.** Each kg of NH3 carries 0.82 kg N that would otherwise reach a sewage works or the sea. At £4/kg N, a typical cost of biological N removal (assumption), it adds about £2M/y at 8 spokes.
+- **Nutrient credits would dominate where they apply.** In catchments under nutrient-neutrality rules nitrogen is priced far above treatment cost; £20/kg N is shown as an upper bound, not a base case.
+- **Oxygen and carbon are small.** The cells make 3.8 kg O2 per kg NH3 (8 electrons per NH3, 4 per O2), worth about £0.1M/y at 8 spokes before purification costs; carbon is about £0.07M/y.
+
+**Caveats.** Full reuse assumes the denitrified brine can replace all fresh regenerant, which the resin trial must show. Valuing disposal at every site credits piped sites such as Keldgate as if they paid to truck their brine; that holds only where the utility would otherwise pay for its disposal or treatment. The nitrogen price is an assumption and needs a utility source.
+
+Model: `waste_scenarios()` in `optimization/nh3_sale.py`; results in `optimization/solutions/nh3_sale_waste.csv`.
+
 ## How to frame it for publication
 
 - **Product choice:** sell NH3 directly. DEF only makes sense if the hub plant can be built far more cheaply than the scaled world-scale benchmark suggests, for example by placing it inside an existing urea or AdBlue site.
